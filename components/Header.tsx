@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { logout, getAnnouncements, markAnnouncementsAsRead, getNotifications, markNotificationsAsRead } from '../services/firebaseService';
+import { logout, onAnnouncementsUpdate, markAnnouncementsAsRead, onNotificationsUpdate, markNotificationsAsRead } from '../services/firebaseService';
 import { UserRole } from '../constants';
 import { Announcement, Notification as NotificationType } from '../types';
+import { Unsubscribe } from 'firebase/firestore';
 
 const Header: React.FC = () => {
-  const { currentUser, userProfile, loading } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isNotificationsOpen, setNotificationsOpen] = useState(false);
@@ -15,21 +16,27 @@ const Header: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
+    let unsubAnnouncements: Unsubscribe | null = null;
+    let unsubNotifications: Unsubscribe | null = null;
+    
     if (userProfile) {
-      const fetchNotifications = async () => {
-        const [allAnnouncements, personalNotifications] = await Promise.all([
-          getAnnouncements(),
-          getNotifications(userProfile.uid)
-        ]);
-
-        setAnnouncements(allAnnouncements);
-        setNotifications(personalNotifications);
-
+        unsubAnnouncements = onAnnouncementsUpdate(setAnnouncements);
+        unsubNotifications = onNotificationsUpdate(userProfile.uid, setNotifications);
+    }
+    
+    return () => {
+        if(unsubAnnouncements) unsubAnnouncements();
+        if(unsubNotifications) unsubNotifications();
+    }
+  }, [userProfile]);
+  
+  useEffect(() => {
+      if(userProfile) {
         const readAnnouncements = userProfile.readAnnouncements || [];
-        const unreadAnnouncements = allAnnouncements.filter(a => !readAnnouncements.includes(a.id));
+        const unreadAnnouncements = announcements.filter(a => !readAnnouncements.includes(a.id));
         
         const readNotifications = userProfile.readNotifications || [];
-        const unreadNotifications = personalNotifications.filter(n => !readNotifications.includes(n.id));
+        const unreadNotifications = notifications.filter(n => !readNotifications.includes(n.id));
 
         const totalUnread = unreadAnnouncements.length + unreadNotifications.length;
         setUnreadCount(totalUnread);
@@ -57,10 +64,12 @@ const Header: React.FC = () => {
              }
            }
         }
-      };
-      fetchNotifications();
-    }
-  }, [userProfile, loading]);
+      } else {
+        setUnreadCount(0);
+        setAnnouncements([]);
+        setNotifications([]);
+      }
+  }, [userProfile, announcements, notifications]);
 
   const requestNotificationPermission = async () => {
       if ('Notification' in window && Notification.permission === 'default') {

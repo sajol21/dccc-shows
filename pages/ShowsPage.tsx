@@ -175,8 +175,12 @@ const CreatePostForm: React.FC<{onSuccess: () => void}> = ({onSuccess}) => {
         e.preventDefault();
         if (!userProfile) return;
 
-        if (!title || !description) {
-            setError('Title and description are required.');
+        if (!title) {
+            setError('A title is required for all shows.');
+            return;
+        }
+        if (type === 'Text' && !description) {
+            setError('A description is required for a text-based show.');
             return;
         }
         if ((type === 'Image' || type === 'Video') && !mediaUrl) {
@@ -190,7 +194,7 @@ const CreatePostForm: React.FC<{onSuccess: () => void}> = ({onSuccess}) => {
         try {
             await createPost({
                 title,
-                description,
+                description: type === 'Text' ? description : title,
                 province,
                 type,
                 mediaURL: type === 'Text' ? '' : mediaUrl,
@@ -198,7 +202,6 @@ const CreatePostForm: React.FC<{onSuccess: () => void}> = ({onSuccess}) => {
                 authorName: userProfile.name,
                 authorBatch: userProfile.batch,
                 authorRole: userProfile.role,
-                // fix: Add 'approved' property to satisfy the Post type. New posts are pending approval.
                 approved: false,
             });
             alert("Show submitted for approval! The curators are on it.");
@@ -215,7 +218,9 @@ const CreatePostForm: React.FC<{onSuccess: () => void}> = ({onSuccess}) => {
         <form onSubmit={handleSubmit} className="space-y-4 text-gray-200">
              {error && <p className="text-red-500 bg-red-900/50 p-2 rounded">{error}</p>}
             <input type="text" placeholder="Title of your masterpiece" value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
-            <textarea placeholder="Tell us the story behind it..." value={description} onChange={e => setDescription(e.target.value)} rows={4} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+            {type === 'Text' && (
+              <textarea placeholder="Tell us the story behind it..." value={description} onChange={e => setDescription(e.target.value)} rows={4} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+            )}
             <select value={province} onChange={e => setProvince(e.target.value as Province)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
                 {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
             </select>

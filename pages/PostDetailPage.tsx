@@ -42,6 +42,7 @@ const PostDetailPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [isLiked, setIsLiked] = useState(false);
     const [isEditModalOpen, setEditModalOpen] = useState(false);
+    const [imageModalUrl, setImageModalUrl] = useState<string | null>(null);
 
     useEffect(() => {
         if (!id) return;
@@ -143,7 +144,14 @@ const PostDetailPage: React.FC = () => {
     return (
       <>
         <div className="bg-gray-900/80 backdrop-blur-lg rounded-xl border border-gray-700 shadow-xl overflow-hidden">
-            {post.mediaURL && post.type === 'Image' && <img src={post.mediaURL} alt={post.title} className="w-full h-64 md:h-96 object-cover"/>}
+            {post.mediaURL && post.type === 'Image' && 
+                <img 
+                    src={post.mediaURL} 
+                    alt={post.title} 
+                    className="w-full h-64 md:h-96 object-cover cursor-pointer"
+                    onClick={() => setImageModalUrl(post.mediaURL || null)}
+                />
+            }
             {post.mediaURL && post.type === 'Video' && (
                 <div className="aspect-w-16 aspect-h-9 bg-black">
                     <iframe src={getEmbedUrl(post.mediaURL)} frameBorder="0" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title={post.title} className="w-full h-full"></iframe>
@@ -217,6 +225,18 @@ const PostDetailPage: React.FC = () => {
         <Modal isOpen={isEditModalOpen} onClose={() => setEditModalOpen(false)} title="Edit Post">
             <EditPostForm post={post} onSuccess={() => { setEditModalOpen(false); }} />
         </Modal>
+        {imageModalUrl && (
+            <div 
+                className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 cursor-pointer"
+                onClick={() => setImageModalUrl(null)}
+            >
+                <img 
+                    src={imageModalUrl} 
+                    alt="Full screen view" 
+                    className="max-w-full max-h-full object-contain"
+                />
+            </div>
+        )}
       </>
     );
 };

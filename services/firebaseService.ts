@@ -1,5 +1,5 @@
 import { 
-  doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion, arrayRemove, Timestamp
+  doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion, arrayRemove, Timestamp, onSnapshot, Unsubscribe
 } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage, auth } from '../config/firebase';
@@ -284,15 +284,18 @@ const createNotification = async (userId: string, title: string, body: string, l
     });
 };
 
-export const getNotifications = async (userId: string): Promise<Notification[]> => {
+export const onNotificationsUpdate = (userId: string, callback: (notifications: Notification[]) => void): Unsubscribe => {
     const q = query(
         collection(db, 'notifications'),
         where('userId', '==', userId),
         orderBy('createdAt', 'desc'),
         limit(15)
     );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as Notification);
+    
+    return onSnapshot(q, (querySnapshot) => {
+        const notifications = querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as Notification);
+        callback(notifications);
+    });
 };
 
 export const createAnnouncement = async (title: string, body: string): Promise<void> => {
@@ -303,10 +306,20 @@ export const createAnnouncement = async (title: string, body: string): Promise<v
     });
 };
 
+// fix: Added missing getAnnouncements function for admin dashboard.
 export const getAnnouncements = async (): Promise<Announcement[]> => {
-    const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(10));
+    const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Announcement);
+};
+
+export const onAnnouncementsUpdate = (callback: (announcements: Announcement[]) => void): Unsubscribe => {
+    const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(10));
+
+    return onSnapshot(q, (querySnapshot) => {
+        const announcements = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Announcement);
+        callback(announcements);
+    });
 };
 
 export const markAnnouncementsAsRead = async (userId: string, announcementIds: string[]): Promise<void> => {
