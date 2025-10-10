@@ -91,7 +91,7 @@ const AdminDashboard: React.FC = () => {
   };
   
   const TabButton: React.FC<{tab: Tab, label: string}> = ({tab, label}) => (
-      <button onClick={() => setActiveTab(tab)} className={`px-4 py-2 text-sm font-medium rounded-lg ${activeTab === tab ? 'bg-blue-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
+      <button onClick={() => setActiveTab(tab)} className={`px-4 py-2 text-sm font-medium rounded-lg ${activeTab === tab ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-200'}`}>
           {label}
       </button>
   );
@@ -99,10 +99,10 @@ const AdminDashboard: React.FC = () => {
   const pendingPostsCount = posts.filter(p => !p.approved).length;
 
   return (
-    <div className="bg-white/10 dark:bg-black/20 backdrop-blur-lg border border-white/20 p-6 rounded-lg shadow-xl">
-      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+    <div className="bg-white/70 backdrop-blur-lg border border-gray-200 p-6 rounded-lg shadow-xl">
+      <h1 className="text-3xl font-bold mb-6">Admin Control Deck</h1>
 
-      <div className="flex flex-wrap gap-2 border-b border-white/20 dark:border-gray-700 mb-6 pb-2">
+      <div className="flex flex-wrap gap-2 border-b border-gray-200 mb-6 pb-2">
         <TabButton tab="dashboard" label="Dashboard" />
         <TabButton tab="users" label="Manage Users" />
         <TabButton tab="posts" label="Manage Posts" />
@@ -115,21 +115,21 @@ const AdminDashboard: React.FC = () => {
         <div>
           {activeTab === 'dashboard' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white/5 dark:bg-black/20 p-4 rounded-lg text-center border border-white/10">
+                <div className="bg-white/50 p-4 rounded-lg text-center border border-gray-200">
                     <h3 className="text-2xl font-bold">{users.length}</h3>
-                    <p className="text-gray-500 dark:text-gray-400">Total Users</p>
+                    <p className="text-gray-500">Total Users</p>
                 </div>
-                <div className="bg-white/5 dark:bg-black/20 p-4 rounded-lg text-center border border-white/10">
+                <div className="bg-white/50 p-4 rounded-lg text-center border border-gray-200">
                     <h3 className="text-2xl font-bold">{posts.length}</h3>
-                    <p className="text-gray-500 dark:text-gray-400">Total Posts</p>
+                    <p className="text-gray-500">Total Posts</p>
                 </div>
-                <div className="bg-white/5 dark:bg-black/20 p-4 rounded-lg text-center border border-white/10">
-                    <h3 className="text-2xl font-bold text-yellow-500">{pendingPostsCount}</h3>
-                    <p className="text-gray-500 dark:text-gray-400">Pending Approval</p>
+                <div className="bg-white/50 p-4 rounded-lg text-center border border-gray-200">
+                    <h3 className="text-2xl font-bold text-yellow-600">{pendingPostsCount}</h3>
+                    <p className="text-gray-500">Pending Approval</p>
                 </div>
-                <div className="bg-white/5 dark:bg-black/20 p-4 rounded-lg text-center border border-white/10">
+                <div className="bg-white/50 p-4 rounded-lg text-center border border-gray-200">
                     <h3 className="text-2xl font-bold">{messages.length}</h3>
-                    <p className="text-gray-500 dark:text-gray-400">Unread Messages</p>
+                    <p className="text-gray-500">Unread Messages</p>
                 </div>
               </div>
           )}
@@ -147,37 +147,37 @@ const AdminDashboard: React.FC = () => {
 // Sub-components for each tab for better organization
 
 const UserManagementTab: React.FC<{ users: UserProfile[], onRoleChange: (uid: string, role: UserRole) => void }> = ({ users, onRoleChange }) => (
-    <div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <thead className="bg-gray-50/10 dark:bg-gray-700/20"><tr>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Name</th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Email</th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Batch</th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Role</th>
+    <div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50"><tr>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Batch</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
         </tr></thead>
-        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {users.map(user => (<tr key={user.uid} className="hover:bg-white/5 dark:hover:bg-gray-700/20">
+        <tbody className="divide-y divide-gray-200">
+            {users.map(user => (<tr key={user.uid} className="hover:bg-gray-50">
                 <td className="px-4 py-2 whitespace-nowrap">{user.name}</td>
                 <td className="px-4 py-2 whitespace-nowrap">{user.email}</td>
                 <td className="px-4 py-2 whitespace-nowrap">{user.batch}</td>
-                <td className="px-4 py-2 whitespace-nowrap"><select value={user.role} onChange={(e) => onRoleChange(user.uid, e.target.value as UserRole)} className="p-1 rounded bg-gray-100 dark:bg-gray-600 border-gray-300 dark:border-gray-500 text-sm">
+                <td className="px-4 py-2 whitespace-nowrap"><select value={user.role} onChange={(e) => onRoleChange(user.uid, e.target.value as UserRole)} className="p-1 rounded bg-gray-100 border-gray-300 text-sm">
                     {USER_ROLES.map(role => <option key={role} value={role}>{role}</option>)}
                 </select></td></tr>
             ))}</tbody></table></div>
 );
 
 const PostManagementTab: React.FC<{ posts: Post[], onApprove: (id: string, approved: boolean) => void, onDelete: (post: Post) => void }> = ({ posts, onApprove, onDelete }) => (
-    <div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <thead className="bg-gray-50/10 dark:bg-gray-700/20"><tr>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Title</th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Author</th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Status</th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
+    <div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50"><tr>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Author</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
         </tr></thead>
-        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {posts.map(post => (<tr key={post.id} className="hover:bg-white/5 dark:hover:bg-gray-700/20">
+        <tbody className="divide-y divide-gray-200">
+            {posts.map(post => (<tr key={post.id} className="hover:bg-gray-50">
                 <td className="px-4 py-2 whitespace-nowrap"><a href={`/#/post/${post.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{post.title}</a></td>
                 <td className="px-4 py-2 whitespace-nowrap">{post.authorName}</td>
-                <td className="px-4 py-2 whitespace-nowrap">{post.approved ? <span className="text-green-500 font-semibold">Approved</span> : <span className="text-yellow-500 font-semibold">Pending</span>}</td>
+                <td className="px-4 py-2 whitespace-nowrap">{post.approved ? <span className="text-green-600 font-semibold">Approved</span> : <span className="text-yellow-600 font-semibold">Pending</span>}</td>
                 <td className="px-4 py-2 flex space-x-2">
                     <button onClick={() => onApprove(post.id, !post.approved)} className={`px-2 py-1 text-sm rounded text-white ${post.approved ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'}`}>{post.approved ? 'Hide' : 'Approve'}</button>
                     <button onClick={() => onDelete(post)} className="px-2 py-1 text-sm rounded bg-red-500 hover:bg-red-600 text-white">Delete</button>
@@ -186,15 +186,15 @@ const PostManagementTab: React.FC<{ posts: Post[], onApprove: (id: string, appro
 );
 
 const MessageManagementTab: React.FC<{ messages: ContactMessage[], onDelete: (id: string) => void }> = ({ messages, onDelete }) => (
-    <div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <thead className="bg-gray-50/10 dark:bg-gray-700/20"><tr>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">From</th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Message</th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Received</th>
-            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
+    <div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50"><tr>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">From</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Message</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Received</th>
+            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
         </tr></thead>
-        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {messages.map(msg => (<tr key={msg.id} className="hover:bg-white/5 dark:hover:bg-gray-700/20">
+        <tbody className="divide-y divide-gray-200">
+            {messages.map(msg => (<tr key={msg.id} className="hover:bg-gray-50">
                 <td className="px-4 py-2 whitespace-nowrap"><p className="font-medium">{msg.name}</p><p className="text-xs text-gray-500">{msg.email}</p></td>
                 <td className="px-4 py-2 text-sm max-w-md">{msg.message}</td>
                 <td className="px-4 py-2 text-xs text-gray-500 whitespace-nowrap">{new Date(msg.timestamp?.toDate()).toLocaleString()}</td>
@@ -227,20 +227,20 @@ const AnnouncementsTab: React.FC<{ announcements: Announcement[], onUpdate: () =
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-                <h3 className="text-xl font-semibold mb-4">Create New Announcement</h3>
-                <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-lg border-white/20">
-                    <input type="text" placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 border rounded-md bg-gray-50/10 dark:bg-gray-700/20 border-white/20 dark:border-gray-600" />
-                    <textarea placeholder="Body" value={body} onChange={e => setBody(e.target.value)} rows={4} className="w-full p-2 border rounded-md bg-gray-50/10 dark:bg-gray-700/20 border-white/20 dark:border-gray-600" />
+                <h3 className="text-xl font-semibold mb-4">Broadcast a New Message</h3>
+                <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-lg bg-white/50 border-gray-200">
+                    <input type="text" placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 border rounded-md bg-gray-50 border-gray-300" />
+                    <textarea placeholder="Body" value={body} onChange={e => setBody(e.target.value)} rows={4} className="w-full p-2 border rounded-md bg-gray-50 border-gray-300" />
                     <button type="submit" disabled={submitting} className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400">{submitting ? 'Sending...' : 'Send Announcement'}</button>
                 </form>
             </div>
             <div>
-                 <h3 className="text-xl font-semibold mb-4">Recent Announcements</h3>
+                 <h3 className="text-xl font-semibold mb-4">Broadcast History</h3>
                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                     {announcements.map(ann => (
-                        <div key={ann.id} className="p-3 bg-white/5 dark:bg-black/20 rounded-lg border border-white/10">
+                        <div key={ann.id} className="p-3 bg-white/50 rounded-lg border border-gray-200">
                             <p className="font-bold">{ann.title}</p>
-                            <p className="text-sm text-gray-600 dark:text-gray-300">{ann.body}</p>
+                            <p className="text-sm text-gray-600">{ann.body}</p>
                             <p className="text-xs text-gray-500 text-right mt-1">{new Date(ann.createdAt?.toDate()).toLocaleString()}</p>
                         </div>
                     ))}
@@ -255,7 +255,7 @@ const SettingsTab: React.FC<{ siteConfig: Partial<SiteConfig>, onResetLeaderboar
 
     useEffect(() => { setConfig(initialConfig) }, [initialConfig]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         if (name.includes('.')) {
             const [parent, child] = name.split('.');
@@ -273,22 +273,30 @@ const SettingsTab: React.FC<{ siteConfig: Partial<SiteConfig>, onResetLeaderboar
 
     return (
         <div className="space-y-6">
-            <div className="p-4 border rounded-lg border-white/20 max-w-xl">
+            <div className="p-4 border rounded-lg bg-white/50 border-gray-200">
                  <h3 className="font-bold mb-3 text-lg">Site Configuration</h3>
-                 <div className="space-y-3">
-                    <input type="text" name="email" placeholder="Contact Email" value={config.email || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50/10 dark:bg-gray-700/20 border-white/20 dark:border-gray-600"/>
-                    <input type="text" name="phone" placeholder="Contact Phone" value={config.phone || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50/10 dark:bg-gray-700/20 border-white/20 dark:border-gray-600"/>
-                    <input type="text" name="socials.facebook" placeholder="Facebook URL" value={config.socials?.facebook || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50/10 dark:bg-gray-700/20 border-white/20 dark:border-gray-600"/>
-                    <input type="text" name="socials.instagram" placeholder="Instagram URL" value={config.socials?.instagram || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50/10 dark:bg-gray-700/20 border-white/20 dark:border-gray-600"/>
-                    <input type="text" name="socials.youtube" placeholder="YouTube URL" value={config.socials?.youtube || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50/10 dark:bg-gray-700/20 border-white/20 dark:border-gray-600"/>
-                    <input type="text" name="bannerImageUrl" placeholder="Homepage Banner Image URL" value={config.bannerImageUrl || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50/10 dark:bg-gray-700/20 border-white/20 dark:border-gray-600"/>
-                    <input type="text" name="bannerLinkUrl" placeholder="Homepage Banner Link URL" value={config.bannerLinkUrl || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50/10 dark:bg-gray-700/20 border-white/20 dark:border-gray-600"/>
+                 <div className="space-y-3 max-w-xl">
+                    <label className="block text-sm font-medium">Minimum Role to Post</label>
+                    <select name="minRoleToPost" value={config.minRoleToPost || UserRole.GENERAL_MEMBER} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50 border-gray-300">
+                        <option value={UserRole.GENERAL_STUDENT}>General Student</option>
+                        <option value={UserRole.GENERAL_MEMBER}>General Member</option>
+                        <option value={UserRole.ASSOCIATE_MEMBER}>Associate Member</option>
+                    </select>
+                    <label className="block text-sm font-medium mt-4">Contact & Socials</label>
+                    <input type="text" name="email" placeholder="Contact Email" value={config.email || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50 border-gray-300"/>
+                    <input type="text" name="phone" placeholder="Contact Phone" value={config.phone || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50 border-gray-300"/>
+                    <input type="text" name="socials.facebook" placeholder="Facebook URL" value={config.socials?.facebook || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50 border-gray-300"/>
+                    <input type="text" name="socials.instagram" placeholder="Instagram URL" value={config.socials?.instagram || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50 border-gray-300"/>
+                    <input type="text" name="socials.youtube" placeholder="YouTube URL" value={config.socials?.youtube || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50 border-gray-300"/>
+                    <label className="block text-sm font-medium mt-4">Homepage Banner</label>
+                    <input type="text" name="bannerImageUrl" placeholder="Banner Image URL" value={config.bannerImageUrl || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50 border-gray-300"/>
+                    <input type="text" name="bannerLinkUrl" placeholder="Banner Link URL" value={config.bannerLinkUrl || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50 border-gray-300"/>
                     <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save Site Settings</button>
                  </div>
             </div>
-            <div className="p-4 border rounded-lg border-white/20 max-w-xl">
+            <div className="p-4 border rounded-lg bg-white/50 border-gray-200">
                 <h3 className="font-bold">Reset Monthly Leaderboard</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">This will archive the current leaderboard and then reset all user scores to 0. This action is irreversible.</p>
+                <p className="text-sm text-gray-600 mb-3">This will archive the current leaderboard and then reset all user scores to 0. This action is irreversible.</p>
                 <button onClick={onResetLeaderboard} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Archive and Reset Now</button>
             </div>
         </div>

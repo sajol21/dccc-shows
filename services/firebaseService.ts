@@ -1,11 +1,11 @@
 import { 
   doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, deleteObject } from 'firebase/storage';
 import { db, storage, auth, rtdb } from '../config/firebase';
 import { UserProfile, Post, Suggestion, ContactMessage, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement } from '../types';
-import { UserRole, Province } from '../constants';
-import { signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { UserRole, Province, LEADERBOARD_ROLES } from '../constants';
+import { signOut, GoogleAuthProvider, signInWithPopup, sendEmailVerification } from 'firebase/auth';
 import { ref as rtdbRef, push, serverTimestamp as rtdbServerTimestamp, remove as rtdbRemove } from 'firebase/database';
 
 // User Management
@@ -39,6 +39,15 @@ export const signInWithGoogle = async (): Promise<void> => {
     }
 };
 
+export const resendVerificationEmail = async (): Promise<void> => {
+    const user = auth.currentUser;
+    if (user) {
+        await sendEmailVerification(user);
+    } else {
+        throw new Error("No user is currently signed in.");
+    }
+}
+
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
   const userRef = doc(db, 'users', uid);
   const docSnap = await getDoc(userRef);
@@ -59,19 +68,9 @@ export const logout = async (): Promise<void> => {
 
 
 // Post Management
-export const createPost = async (postData: Omit<Post, 'id' | 'timestamp' | 'likes' | 'suggestionsCount' | 'approved'>, file?: File): Promise<void> => {
-  let finalMediaURL = postData.mediaURL || '';
-  if (file) {
-    const storageRef = ref(storage, `posts/${Date.now()}_${file.name}`);
-    const snapshot = await uploadBytes(storageRef, file);
-    finalMediaURL = await getDownloadURL(snapshot.ref);
-  }
-
-  const { mediaURL, ...restOfPostData } = postData;
-
+export const createPost = async (postData: Omit<Post, 'id' | 'timestamp' | 'likes' | 'suggestionsCount' | 'approved'>): Promise<void> => {
   await addDoc(collection(db, 'posts'), {
-    ...restOfPostData,
-    mediaURL: finalMediaURL,
+    ...postData,
     timestamp: serverTimestamp(),
     likes: [],
     suggestionsCount: 0,
@@ -98,8 +97,14 @@ export const getPost = async (postId: string): Promise<Post | null> => {
     return null;
 }
 
+// Gets posts for the main feed (from leaderboard-eligible members)
 export const getPosts = async (lastVisible?: DocumentSnapshot, filters: any = {}): Promise<{ posts: Post[], lastVisible: DocumentSnapshot | null }> => {
-    let q = query(collection(db, 'posts'), where('approved', '==', true), orderBy('timestamp', 'desc'));
+    let q = query(
+        collection(db, 'posts'), 
+        where('approved', '==', true), 
+        where('authorRole', 'in', LEADERBOARD_ROLES),
+        orderBy('timestamp', 'desc')
+    );
 
     if (filters.province) {
         q = query(q, where('province', '==', filters.province));
@@ -111,7 +116,7 @@ export const getPosts = async (lastVisible?: DocumentSnapshot, filters: any = {}
         q = query(q, where('authorBatch', '==', filters.batch));
     }
     
-    q = query(q, limit(10));
+    q = query(q, limit(9));
 
     if (lastVisible) {
         q = query(q, startAfter(lastVisible));
@@ -123,6 +128,24 @@ export const getPosts = async (lastVisible?: DocumentSnapshot, filters: any = {}
 
     return { posts, lastVisible: newLastVisible || null };
 };
+
+// Gets featured posts from high-ranking members
+export const getFeaturedPosts = async (): Promise<Post[]> => {
+    const highRankingRoles = Object.values(UserRole).filter(role => !LEADERBOARD_ROLES.includes(role));
+    
+    if (highRankingRoles.length === 0) return [];
+
+    const q = query(
+        collection(db, 'posts'),
+        where('approved', '==', true),
+        where('authorRole', 'in', highRankingRoles),
+        orderBy('timestamp', 'desc'),
+        limit(5)
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+}
+
 
 export const getPostsByAuthor = async (authorId: string): Promise<Post[]> => {
     const q = query(
@@ -144,26 +167,29 @@ export const toggleLikePost = async (postId: string, userId: string): Promise<vo
     const authorRef = doc(db, 'users', post.authorId);
     
     const batch = writeBatch(db);
+    const isLeaderboardAuthor = LEADERBOARD_ROLES.includes(post.authorRole);
 
     if (post.likes.includes(userId)) {
         batch.update(postRef, { likes: post.likes.filter(id => id !== userId) });
-        batch.update(authorRef, { 
-            totalLikes: increment(-1),
-            leaderboardScore: increment(-1)
-        });
+        const updates: any = { totalLikes: increment(-1) };
+        if (isLeaderboardAuthor) {
+            updates.leaderboardScore = increment(-1);
+        }
+        batch.update(authorRef, updates);
     } else {
         batch.update(postRef, { likes: [...post.likes, userId] });
-        batch.update(authorRef, {
-            totalLikes: increment(1),
-            leaderboardScore: increment(1)
-        });
+        const updates: any = { totalLikes: increment(1) };
+        if (isLeaderboardAuthor) {
+            updates.leaderboardScore = increment(1);
+        }
+        batch.update(authorRef, updates);
     }
     await batch.commit();
 };
 
 
 // Suggestion Management
-export const addSuggestion = async (suggestionData: Omit<Suggestion, 'id' | 'timestamp'>, authorId: string): Promise<void> => {
+export const addSuggestion = async (suggestionData: Omit<Suggestion, 'id' | 'timestamp'>, post: Post): Promise<void> => {
   const suggestionsRef = rtdbRef(rtdb, `suggestions/${suggestionData.postId}`);
   await push(suggestionsRef, {
     ...suggestionData,
@@ -177,11 +203,13 @@ export const addSuggestion = async (suggestionData: Omit<Suggestion, 'id' | 'tim
     suggestionsCount: increment(1)
   });
   
-  const authorRef = doc(db, 'users', authorId);
-  batch.update(authorRef, {
-      totalSuggestions: increment(1),
-      leaderboardScore: increment(1)
-  });
+  const authorRef = doc(db, 'users', post.authorId);
+  const isLeaderboardAuthor = LEADERBOARD_ROLES.includes(post.authorRole);
+  const updates: any = { totalSuggestions: increment(1) };
+  if(isLeaderboardAuthor) {
+      updates.leaderboardScore = increment(1);
+  }
+  batch.update(authorRef, updates);
   
   await batch.commit();
 };
@@ -203,10 +231,12 @@ export const deleteSuggestion = async (postId: string, suggestionId: string): Pr
     });
 
     const authorRef = doc(db, 'users', post.authorId);
-    batch.update(authorRef, {
-        totalSuggestions: increment(-1),
-        leaderboardScore: increment(-1)
-    });
+    const isLeaderboardAuthor = LEADERBOARD_ROLES.includes(post.authorRole);
+    const updates: any = { totalSuggestions: increment(-1) };
+    if (isLeaderboardAuthor) {
+        updates.leaderboardScore = increment(-1);
+    }
+    batch.update(authorRef, updates);
     
     await batch.commit();
 };
@@ -214,7 +244,12 @@ export const deleteSuggestion = async (postId: string, suggestionId: string): Pr
 
 // Leaderboard
 export const getLeaderboardUsers = async (): Promise<UserProfile[]> => {
-    const q = query(collection(db, 'users'), orderBy('leaderboardScore', 'desc'), limit(50));
+    const q = query(
+        collection(db, 'users'), 
+        where('role', 'in', LEADERBOARD_ROLES),
+        orderBy('leaderboardScore', 'desc'), 
+        limit(50)
+    );
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => doc.data() as UserProfile);
 };
@@ -242,7 +277,15 @@ export const getSiteConfig = async (): Promise<SiteConfig | null> => {
     if (docSnap.exists()) {
         return docSnap.data() as SiteConfig;
     }
-    return null;
+    // Return default config if it doesn't exist
+    return {
+        phone: '123-456-7890',
+        email: 'info@dccc.com',
+        socials: { facebook: '#', instagram: '#', youtube: '#' },
+        bannerImageUrl: '',
+        bannerLinkUrl: '#',
+        minRoleToPost: UserRole.GENERAL_MEMBER,
+    };
 }
 
 export const updateSiteConfig = async (data: Partial<SiteConfig>): Promise<void> => {
@@ -315,12 +358,8 @@ export const approvePost = async (postId: string, approved: boolean): Promise<vo
 
 export const deletePost = async (post: Post): Promise<void> => {
     if(post.mediaURL && post.type === 'Image') {
-        try {
-            const fileRef = ref(storage, post.mediaURL);
-            await deleteObject(fileRef);
-        } catch (err) {
-            console.error("Error deleting file:", err);
-        }
+        // We no longer store images, so no deleteObject call needed.
+        // If we were, we would need to check if the URL is from Firebase Storage.
     }
     
     const suggestionsRef = rtdbRef(rtdb, `suggestions/${post.id}`);

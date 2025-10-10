@@ -15,3 +15,18 @@ export enum Province {
 
 export const USER_ROLES = Object.values(UserRole);
 export const PROVINCES = Object.values(Province);
+
+export const ROLE_HIERARCHY: { [key in UserRole]: number } = {
+    [UserRole.GENERAL_STUDENT]: 0,
+    [UserRole.GENERAL_MEMBER]: 1,
+    [UserRole.ASSOCIATE_MEMBER]: 2,
+    [UserRole.EXECUTIVE_MEMBER]: 3,
+    [UserRole.LIFETIME_MEMBER]: 4,
+    [UserRole.ADMIN]: 5,
+};
+
+export const LEADERBOARD_ROLES = [
+    UserRole.GENERAL_STUDENT,
+    UserRole.GENERAL_MEMBER,
+    UserRole.ASSOCIATE_MEMBER
+];

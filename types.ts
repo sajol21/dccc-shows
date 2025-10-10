@@ -76,6 +76,7 @@ export interface SiteConfig {
     };
     bannerImageUrl: string;
     bannerLinkUrl: string;
+    minRoleToPost: UserRole;
 }
 
 export interface Announcement {

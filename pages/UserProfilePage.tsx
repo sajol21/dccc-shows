@@ -95,50 +95,50 @@ const UserProfilePage: React.FC = () => {
 
   return (
     <div className="space-y-12">
-      <div className="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8">
+      <div className="max-w-4xl mx-auto bg-gray-800 rounded-lg shadow-xl p-8">
         <div className="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8">
           <div className="text-center md:text-left">
-            <h1 className="text-3xl font-bold">{profileData.name}</h1>
-            <p className="text-md text-gray-500 dark:text-gray-400">{profileData.email}</p>
-            <span className="mt-2 inline-block bg-blue-100 text-blue-800 text-sm font-semibold mr-2 px-2.5 py-0.5 rounded dark:bg-blue-200 dark:text-blue-800">{profileData.role}</span>
+            <h1 className="text-3xl font-bold text-white">{profileData.name}</h1>
+            <p className="text-md text-gray-400">{profileData.email}</p>
+            <span className="mt-2 inline-block bg-blue-900/50 text-blue-300 text-sm font-semibold mr-2 px-2.5 py-0.5 rounded">{profileData.role}</span>
           </div>
           <div className="flex-grow w-full">
               <div className="grid grid-cols-2 gap-4 text-center my-4">
-                  <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                      <p className="text-2xl font-bold">{profileData.submissionsCount}</p>
-                      <p className="text-sm text-gray-500">Submissions</p>
+                  <div className="p-4 bg-gray-700 rounded-lg">
+                      <p className="text-2xl font-bold text-white">{profileData.submissionsCount}</p>
+                      <p className="text-sm text-gray-400">Submissions</p>
                   </div>
-                  <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                      <p className="text-2xl font-bold">{profileData.totalLikes}</p>
-                      <p className="text-sm text-gray-500">Total Likes</p>
+                  <div className="p-4 bg-gray-700 rounded-lg">
+                      <p className="text-2xl font-bold text-white">{profileData.totalLikes}</p>
+                      <p className="text-sm text-gray-400">Total Likes</p>
                   </div>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                      <label className="font-semibold">Full Name:</label>
-                      {isEditing ? <input type="text" name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600"/> : <p className="text-gray-600 dark:text-gray-300">{profileData.name}</p>}
+                      <label className="font-semibold text-gray-300">Full Name:</label>
+                      {isEditing ? <input type="text" name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/> : <p className="text-gray-300">{profileData.name}</p>}
                   </div>
                   <div>
-                      <label className="font-semibold">Phone:</label>
-                      {isEditing ? <input type="text" name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600"/> : <p className="text-gray-600 dark:text-gray-300">{profileData.phone || 'Not provided'}</p>}
+                      <label className="font-semibold text-gray-300">Phone:</label>
+                      {isEditing ? <input type="text" name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/> : <p className="text-gray-300">{profileData.phone || 'Not provided'}</p>}
                   </div>
                   <div>
-                      <label className="font-semibold">Batch:</label>
-                      {isEditing ? <input type="text" name="batch" value={formData.batch || ''} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600"/> : <p className="text-gray-600 dark:text-gray-300">{profileData.batch || 'Not provided'}</p>}
+                      <label className="font-semibold text-gray-300">Batch:</label>
+                      {isEditing ? <input type="text" name="batch" value={formData.batch || ''} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/> : <p className="text-gray-300">{profileData.batch || 'Not provided'}</p>}
                   </div>
                    <div>
-                      <label className="font-semibold">Province:</label>
+                      <label className="font-semibold text-gray-300">Province:</label>
                       {isEditing ? (
-                          <select name="province" value={formData.province || Province.CULTURAL} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
+                          <select name="province" value={formData.province || Province.CULTURAL} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
                               {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
                           </select>
-                      ) : <p className="text-gray-600 dark:text-gray-300">{profileData.province}</p>}
+                      ) : <p className="text-gray-300">{profileData.province}</p>}
                   </div>
                   
                   {isOwner && (
                     <div className="mt-6 flex flex-wrap gap-4">
-                        <button type="button" onClick={handleEditToggle} className="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500">
+                        <button type="button" onClick={handleEditToggle} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500 text-white">
                             {isEditing ? 'Cancel' : 'Edit Profile'}
                         </button>
                         {isEditing && (
@@ -155,7 +155,7 @@ const UserProfilePage: React.FC = () => {
       </div>
 
       <section>
-        <h2 className="text-3xl font-bold text-center mb-6">Submissions by {profileData.name}</h2>
+        <h2 className="text-3xl font-bold text-center mb-6 text-gray-100">Creations by {profileData.name}</h2>
         {posts.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {posts.map(post => (
@@ -163,7 +163,7 @@ const UserProfilePage: React.FC = () => {
             ))}
           </div>
         ) : (
-          <p className="text-center text-gray-500 dark:text-gray-400">This user has not submitted any approved posts yet.</p>
+          <p className="text-center text-gray-400">This artist's canvas is currently empty. A masterpiece is surely on the way!</p>
         )}
       </section>
     </div>
