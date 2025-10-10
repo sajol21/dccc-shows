@@ -26,18 +26,35 @@ const Header: React.FC = () => {
         setNotifications(personalNotifications);
 
         const readAnnouncements = userProfile.readAnnouncements || [];
-        const unreadAnnouncements = allAnnouncements.filter(a => !readAnnouncements.includes(a.id)).length;
+        const unreadAnnouncements = allAnnouncements.filter(a => !readAnnouncements.includes(a.id));
         
         const readNotifications = userProfile.readNotifications || [];
-        const unreadNotifications = personalNotifications.filter(n => !readNotifications.includes(n.id)).length;
+        const unreadNotifications = personalNotifications.filter(n => !readNotifications.includes(n.id));
 
-        const totalUnread = unreadAnnouncements + unreadNotifications;
+        const totalUnread = unreadAnnouncements.length + unreadNotifications.length;
         setUnreadCount(totalUnread);
 
-        if (totalUnread > 0 && Notification.permission === 'granted') {
-           const latestUnreadAnn = allAnnouncements.filter(a => !readAnnouncements.includes(a.id))[0];
-           if (latestUnreadAnn) {
-             new Notification(latestUnreadAnn.title, { body: latestUnreadAnn.body, icon: '/vite.svg' });
+        // Browser push notification logic - show the single most recent unread item
+        if (totalUnread > 0 && 'Notification' in window && Notification.permission === 'granted') {
+           const allUnread = [...unreadAnnouncements, ...unreadNotifications];
+           
+           allUnread.sort((a, b) => {
+               const timeA = a.createdAt?.toDate().getTime() || 0;
+               const timeB = b.createdAt?.toDate().getTime() || 0;
+               return timeB - timeA;
+           });
+
+           const latestItem = allUnread[0];
+           
+           if (latestItem) {
+             const lastNotifiedId = sessionStorage.getItem('lastNotifiedId');
+             if (latestItem.id !== lastNotifiedId) {
+                new Notification(latestItem.title, { 
+                    body: latestItem.body, 
+                    icon: 'https://res.cloudinary.com/dabfeqgsj/image/upload/v1759778648/cyizstrjgcq0w9fr8cxp.png'
+                });
+                sessionStorage.setItem('lastNotifiedId', latestItem.id);
+             }
            }
         }
       };
@@ -75,7 +92,7 @@ const Header: React.FC = () => {
           const unreadNotifIds = notifications.filter(n => !readNotif.includes(n.id)).map(n => n.id);
           if(unreadNotifIds.length > 0) await markNotificationsAsRead(userProfile.uid, unreadNotifIds);
           
-          setUnreadCount(0);
+          setUnreadCount(0); // Optimistically set to 0, profile listener will confirm
       }
   }
 

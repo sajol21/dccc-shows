@@ -1,8 +1,7 @@
-
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../config/firebase';
-import { getUserProfile } from '../services/firebaseService';
+import { doc, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { auth, db } from '../config/firebase';
 import { UserProfile } from '../types';
 
 interface AuthContextType {
@@ -23,18 +22,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      if (user) {
-        const profile = await getUserProfile(user.uid);
-        setUserProfile(profile);
-      } else {
-        setUserProfile(null);
+    let unsubscribeProfile: Unsubscribe | undefined;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      // Unsubscribe from old profile listener if it exists
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
       }
-      setLoading(false);
+
+      setCurrentUser(user);
+
+      if (user) {
+        setLoading(true); // Set loading while we fetch the profile for the first time
+        const userRef = doc(db, 'users', user.uid);
+        unsubscribeProfile = onSnapshot(userRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setUserProfile(docSnap.data() as UserProfile);
+          } else {
+            console.warn("User profile document not found for UID:", user.uid);
+            setUserProfile(null);
+          }
+          setLoading(false);
+        }, (error) => {
+          console.error("Error listening to user profile:", error);
+          setUserProfile(null);
+          setLoading(false);
+        });
+      } else {
+        // User is signed out, clear data
+        setUserProfile(null);
+        setLoading(false);
+      }
     });
 
-    return unsubscribe;
+    // Cleanup on component unmount
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+      }
+    };
   }, []);
 
   const value = {
