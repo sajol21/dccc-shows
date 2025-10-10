@@ -5,6 +5,25 @@ import { useAuth } from '../hooks/useAuth';
 import { toggleLikePost } from '../services/firebaseService';
 import RoleBadge from './RoleBadge';
 
+// Helper function to extract a YouTube thumbnail URL
+const getYouTubeThumbnail = (url: string | undefined): string | null => {
+    if (!url) return null;
+    let videoId: string | null = null;
+    try {
+        if (url.includes('youtube.com/watch')) {
+            videoId = new URL(url).searchParams.get('v');
+        } else if (url.includes('youtu.be/')) {
+            videoId = new URL(url).pathname.split('/').pop() || null;
+        }
+    } catch (e) {
+        console.error("Could not parse YouTube URL for thumbnail", e);
+        return null;
+    }
+
+    return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null;
+};
+
+
 const PostCard: React.FC<{ post: Post }> = ({ post }) => {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
@@ -23,11 +42,27 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
       navigate(`/user/${post.authorId}`);
     };
 
+    const videoThumbnailUrl = getYouTubeThumbnail(post.mediaURL);
+
     return (
         <Link to={`/post/${post.id}`} className="group block bg-black/20 backdrop-blur-lg rounded-xl border border-white/10 shadow-lg hover:shadow-xl hover:border-white/20 transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
-            {post.mediaURL && post.type === 'Image' && (
-                <div className="overflow-hidden">
-                    <img src={post.mediaURL} alt={post.title} className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"/>
+            {post.type === 'Image' && post.mediaURL && (
+                <div className="overflow-hidden aspect-video bg-black">
+                    <img src={post.mediaURL} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
+                </div>
+            )}
+            {post.type === 'Video' && (
+                <div className="overflow-hidden aspect-video bg-black relative">
+                    {videoThumbnailUrl && (
+                        <img src={videoThumbnailUrl} alt={`${post.title} thumbnail`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    )}
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity duration-300">
+                        <div className="w-14 h-14 bg-black/50 rounded-full flex items-center justify-center group-hover:bg-red-600 transition-colors">
+                           <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" viewBox="0 0 20 20" fill="currentColor">
+                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                           </svg>
+                        </div>
+                    </div>
                 </div>
             )}
             <div className="p-6">

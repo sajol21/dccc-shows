@@ -42,7 +42,7 @@ const PostDetailPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [isLiked, setIsLiked] = useState(false);
     const [isEditModalOpen, setEditModalOpen] = useState(false);
-    const [imageModalUrl, setImageModalUrl] = useState<string | null>(null);
+    const [lightboxMedia, setLightboxMedia] = useState<{type: 'Image' | 'Video', url: string} | null>(null);
 
     useEffect(() => {
         if (!id) return;
@@ -145,16 +145,24 @@ const PostDetailPage: React.FC = () => {
       <>
         <div className="bg-gray-900/80 backdrop-blur-lg rounded-xl border border-gray-700 shadow-xl overflow-hidden">
             {post.mediaURL && post.type === 'Image' && 
-                <img 
-                    src={post.mediaURL} 
-                    alt={post.title} 
-                    className="w-full h-64 md:h-96 object-cover cursor-pointer"
-                    onClick={() => setImageModalUrl(post.mediaURL || null)}
-                />
+                <div className="bg-black">
+                    <img 
+                        src={post.mediaURL} 
+                        alt={post.title} 
+                        className="w-full aspect-square object-contain mx-auto cursor-pointer"
+                        onClick={() => setLightboxMedia({ type: 'Image', url: post.mediaURL || '' })}
+                    />
+                </div>
             }
             {post.mediaURL && post.type === 'Video' && (
-                <div className="aspect-w-16 aspect-h-9 bg-black">
-                    <iframe src={getEmbedUrl(post.mediaURL)} frameBorder="0" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title={post.title} className="w-full h-full"></iframe>
+                <div 
+                    className="aspect-video bg-black cursor-pointer group relative"
+                    onClick={() => setLightboxMedia({ type: 'Video', url: getEmbedUrl(post.mediaURL) })}
+                >
+                    <iframe src={getEmbedUrl(post.mediaURL)} frameBorder="0" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title={post.title} className="w-full h-full pointer-events-none"></iframe>
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <svg className="w-20 h-20 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"></path></svg>
+                    </div>
                 </div>
             )}
             
@@ -171,11 +179,13 @@ const PostDetailPage: React.FC = () => {
                     </div>
                 </header>
 
-                <div className="bg-black/20 p-6 rounded-lg mb-6 border border-gray-700">
-                    <article className="prose prose-invert max-w-none text-lg text-gray-300">
-                        <p>{post.description}</p>
-                    </article>
-                </div>
+                {post.type === 'Text' && (
+                    <div className="bg-black/20 p-6 rounded-lg mb-6 border border-gray-700">
+                        <article className="prose prose-invert max-w-none text-lg text-gray-300">
+                            <p>{post.description}</p>
+                        </article>
+                    </div>
+                )}
                 
                 <div className="text-sm text-gray-400 space-y-2 mb-6">
                     <div className="flex items-center gap-2">
@@ -225,16 +235,24 @@ const PostDetailPage: React.FC = () => {
         <Modal isOpen={isEditModalOpen} onClose={() => setEditModalOpen(false)} title="Edit Post">
             <EditPostForm post={post} onSuccess={() => { setEditModalOpen(false); }} />
         </Modal>
-        {imageModalUrl && (
+        {lightboxMedia && (
             <div 
-                className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 cursor-pointer"
-                onClick={() => setImageModalUrl(null)}
+                className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 cursor-pointer"
+                onClick={() => setLightboxMedia(null)}
             >
-                <img 
-                    src={imageModalUrl} 
-                    alt="Full screen view" 
-                    className="max-w-full max-h-full object-contain"
-                />
+                {lightboxMedia.type === 'Image' && (
+                     <img 
+                        src={lightboxMedia.url} 
+                        alt="Full screen view" 
+                        className="max-w-full max-h-full object-contain"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                )}
+                {lightboxMedia.type === 'Video' && (
+                    <div className="aspect-video w-full max-w-6xl" onClick={(e) => e.stopPropagation()}>
+                        <iframe src={`${lightboxMedia.url}?autoplay=1`} frameBorder="0" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title={post.title} className="w-full h-full"></iframe>
+                    </div>
+                )}
             </div>
         )}
       </>
