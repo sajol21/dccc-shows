@@ -35,7 +35,6 @@ export interface Post {
 }
 
 export interface Suggestion {
-  id: string;
   commenterId: string;
   commenterName: string;
   commenterBatch: string;

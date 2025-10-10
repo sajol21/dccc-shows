@@ -1,14 +1,14 @@
 import React, { useEffect, useState, FormEvent } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { getPost, addSuggestion, toggleLikePost, deletePost, updatePost } from '../services/firebaseService';
-import { Post, Suggestion } from '../types';
-import { Province, PROVINCES, UserRole } from '../constants';
+import { Post } from '../types';
+import { PROVINCES, UserRole } from '../constants';
 import { useAuth } from '../hooks/useAuth';
 import Spinner from '../components/Spinner';
 import Modal from '../components/Modal';
 import RoleBadge from '../components/RoleBadge';
 import { db } from '../config/firebase';
-import { collection, doc, onSnapshot, Timestamp } from 'firebase/firestore';
+import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
 
 const getEmbedUrl = (url: string | undefined): string => {
     if (!url) return '';
@@ -30,6 +30,46 @@ const getEmbedUrl = (url: string | undefined): string => {
         return url;
     }
     return url;
+};
+
+const ShareButtons: React.FC<{ post: Post }> = ({ post }) => {
+    const postUrl = window.location.href;
+    const encodedUrl = encodeURIComponent(postUrl);
+    const text = `Check out this show: ${post.title}`;
+    const encodedText = encodeURIComponent(text);
+    const encodedTitle = encodeURIComponent(post.title);
+    const summary = post.description.substring(0, 100) + '...';
+    const encodedSummary = encodeURIComponent(summary);
+
+    const shareLinks = {
+        facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+        twitter: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedText}`,
+        linkedin: `https://www.linkedin.com/shareArticle?mini=true&url=${encodedUrl}&title=${encodedTitle}&summary=${encodedSummary}`,
+    };
+
+    const openShareWindow = (url: string) => {
+        window.open(url, '_blank', 'noopener,noreferrer,width=600,height=400');
+    };
+    
+    return (
+        <section className="mt-6 pt-6 border-t border-gray-700">
+            <h3 className="text-lg font-semibold text-center text-gray-300 mb-4">Share this Show</h3>
+            <div className="flex justify-center items-center gap-4">
+                <button onClick={() => openShareWindow(shareLinks.facebook)} aria-label="Share on Facebook" className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#1877F2] text-white font-bold hover:bg-opacity-90 transition-opacity">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z" /></svg>
+                    <span>Facebook</span>
+                </button>
+                <button onClick={() => openShareWindow(shareLinks.twitter)} aria-label="Share on Twitter" className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#1DA1F2] text-white font-bold hover:bg-opacity-90 transition-opacity">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616v.064c0 2.295 1.616 4.22 3.766 4.661-.457.124-.94.19-1.442.19-.304 0-.598-.03-.886-.083.626 1.889 2.443 3.266 4.6 3.306-1.723 1.34-3.89 2.15-6.25 2.15-.407 0-.809-.023-1.205-.072 2.235 1.432 4.896 2.268 7.733 2.268 9.284 0 14.368-7.689 14.368-14.368 0-.218-.005-.436-.014-.652.986-.713 1.84-1.603 2.52-2.61z" /></svg>
+                    <span>Twitter</span>
+                </button>
+                <button onClick={() => openShareWindow(shareLinks.linkedin)} aria-label="Share on LinkedIn" className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[#0A66C2] text-white font-bold hover:bg-opacity-90 transition-opacity">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" /></svg>
+                    <span>LinkedIn</span>
+                </button>
+            </div>
+        </section>
+    );
 };
 
 const PostDetailPage: React.FC = () => {
@@ -70,19 +110,17 @@ const PostDetailPage: React.FC = () => {
 
     const handleSuggestionSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!id || !userProfile || !post || !newSuggestion.trim()) return;
+        if (!id || !userProfile || !newSuggestion.trim()) return;
         setSuggestionStatus('Submitting...');
         try {
             await addSuggestion(
                 id,
                 {
-                    id: doc(collection(db, 'posts')).id, // Firestore-like unique ID
                     commenterId: userProfile.uid,
                     commenterName: userProfile.name,
                     commenterBatch: userProfile.batch,
                     text: newSuggestion,
-                },
-                post
+                }
             );
             setNewSuggestion('');
             setSuggestionStatus('Suggestion posted!');
@@ -181,7 +219,7 @@ const PostDetailPage: React.FC = () => {
                 </div>
 
 
-                <div className="flex items-center space-x-6 py-4 border-t border-b border-gray-700">
+                <div className="flex items-center space-x-6 py-4 border-t border-gray-700">
                     <button onClick={handleLike} className={`flex items-center space-x-2 text-lg font-semibold transition-colors ${isLiked ? 'text-red-500' : 'text-gray-400 hover:text-red-400'}`}>
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" /></svg>
                         <span>{(post.likes || []).length} Likes</span>
@@ -191,6 +229,8 @@ const PostDetailPage: React.FC = () => {
                         <span>{suggestions.length} Suggestions</span>
                     </div>
                 </div>
+
+                <ShareButtons post={post} />
 
                 <section className="mt-8">
                     <h2 className="text-2xl font-bold mb-4 text-white">Leave Your Mark</h2>
@@ -204,8 +244,8 @@ const PostDetailPage: React.FC = () => {
                         </form>
                     ) : <p>The audience awaits your feedback! <Link to="/login" className="text-blue-400 hover:underline">Log in</Link> to leave a suggestion.</p>}
                     <div className="space-y-4">
-                        {suggestions.map(sugg => (
-                            <div key={sugg.id} className="bg-black/20 p-4 rounded-lg border border-gray-700">
+                        {suggestions.map((sugg, index) => (
+                            <div key={index} className="bg-black/20 p-4 rounded-lg border border-gray-700">
                                 <p className="mb-2 text-gray-300">{sugg.text}</p>
                                 <div className="text-xs text-gray-500">
                                     <span>{sugg.commenterName} (Batch {sugg.commenterBatch})</span> - <span>{suggestionTimestampToDateString(sugg.timestamp)}</span>

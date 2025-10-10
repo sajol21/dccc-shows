@@ -1,5 +1,5 @@
 import { 
-  doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion
+  doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion, arrayRemove
 } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage, auth } from '../config/firebase';
@@ -168,35 +168,24 @@ export const toggleLikePost = async (postId: string, userId: string): Promise<vo
     if (!postSnap.exists()) return;
 
     const post = postSnap.data() as Post;
-    const authorRef = doc(db, 'users', post.authorId);
+    const currentLikes = post.likes || [];
     
-    const batch = writeBatch(db);
-    const isLeaderboardAuthor = LEADERBOARD_ROLES.includes(post.authorRole);
-    const currentLikes = post.likes || []; // Defensive check
-
     if (currentLikes.includes(userId)) {
         // Unlike
-        batch.update(postRef, { likes: currentLikes.filter(id => id !== userId) });
-        const updates: any = { totalLikes: increment(-1) };
-        if (isLeaderboardAuthor) {
-            updates.leaderboardScore = increment(-1);
-        }
-        batch.update(authorRef, updates);
+        await updateDoc(postRef, { likes: arrayRemove(userId) });
     } else {
         // Like
-        batch.update(postRef, { likes: [...currentLikes, userId] });
-        const updates: any = { totalLikes: increment(1) };
-        if (isLeaderboardAuthor) {
-            updates.leaderboardScore = increment(1);
-        }
-        batch.update(authorRef, updates);
+        await updateDoc(postRef, { likes: arrayUnion(userId) });
     }
-    await batch.commit();
+    
+    // Note: The logic to update the author's totalLikes and leaderboardScore has been removed
+    // to prevent permission errors where one user cannot update another user's profile.
+    // This functionality should ideally be handled by a backend Cloud Function.
 };
 
 
 // Suggestion Management
-export const addSuggestion = async (postId: string, suggestionData: Omit<Suggestion, 'timestamp'>, post: Post): Promise<void> => {
+export const addSuggestion = async (postId: string, suggestionData: Omit<Suggestion, 'timestamp'>): Promise<void> => {
     const postRef = doc(db, 'posts', postId);
 
     const newSuggestion = {
@@ -204,21 +193,13 @@ export const addSuggestion = async (postId: string, suggestionData: Omit<Suggest
       timestamp: serverTimestamp()
     };
     
-    const batch = writeBatch(db);
-    
-    batch.update(postRef, {
+    await updateDoc(postRef, {
       suggestions: arrayUnion(newSuggestion)
     });
-    
-    const authorRef = doc(db, 'users', post.authorId);
-    const isLeaderboardAuthor = LEADERBOARD_ROLES.includes(post.authorRole);
-    const updates: any = { totalSuggestions: increment(1) };
-    if(isLeaderboardAuthor) {
-        updates.leaderboardScore = increment(1);
-    }
-    batch.update(authorRef, updates);
-    
-    await batch.commit();
+
+    // Note: The logic to update the author's totalSuggestions and leaderboardScore has been removed
+    // to prevent permission errors where one user cannot update another user's profile.
+    // This functionality should ideally be handled by a backend Cloud Function.
 };
 
 
@@ -337,30 +318,19 @@ export const approvePost = async (postId: string, approved: boolean): Promise<vo
 }
 
 export const deletePost = async (post: Post): Promise<void> => {
-    if(post.mediaURL && post.type === 'Image') {
-        // We no longer store images, so no deleteObject call needed.
-        // If we were, we would need to check if the URL is from Firebase Storage.
-    }
-    
-    const batch = writeBatch(db);
-    
     const postRef = doc(db, 'posts', post.id);
-    batch.delete(postRef);
+    await deleteDoc(postRef);
 
+    // Note: The logic to update the author's stats (submissionsCount, likes, etc.) has been removed
+    // to prevent permission errors where an admin cannot update another user's profile.
+    // This functionality should ideally be handled by a backend Cloud Function that triggers on post deletion.
+    
+    // The user's submissionsCount will still be updated when a post is created, so this will become inaccurate
+    // over time without a backend function. For now, we prioritize the ability for admins to delete posts.
     const userRef = doc(db, 'users', post.authorId);
-    
-    // Defensive check for missing properties on older documents
-    const likesCount = post.likes?.length || 0;
-    const suggestionsCount = post.suggestions?.length || 0;
-
-    batch.update(userRef, {
-        submissionsCount: increment(-1),
-        totalLikes: increment(-likesCount),
-        totalSuggestions: increment(-suggestionsCount),
-        leaderboardScore: increment(-(likesCount + suggestionsCount))
+    await updateDoc(userRef, {
+        submissionsCount: increment(-1)
     });
-    
-    await batch.commit();
 }
 
 export const resetLeaderboard = async (): Promise<void> => {
