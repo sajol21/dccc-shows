@@ -93,7 +93,12 @@ const PostDetailPage: React.FC = () => {
     };
 
     const handleLike = async () => {
-        if (!id || !currentUser || !post) return;
+        if (!currentUser) {
+            navigate('/login');
+            return;
+        }
+        if (!id || !post) return;
+        
         // Optimistic update for UI responsiveness
         const newLikedStatus = !isLiked;
         const currentLikes = post.likes || [];
