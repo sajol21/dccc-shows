@@ -123,7 +123,7 @@ const Header: React.FC = () => {
                                        <div key={notif.id} className="p-3 border-b border-gray-700 last:border-b-0 hover:bg-gray-800">
                                            <p className="font-semibold text-sm text-blue-300">{notif.title}</p>
                                            <p className="text-xs text-gray-400">{notif.body}</p>
-                                           <p className="text-right text-xs text-gray-500 mt-1">{new Date(notif.createdAt?.toDate()).toLocaleDateString()}</p>
+                                           <p className="text-right text-xs text-gray-500 mt-1">{notif.createdAt ? new Date(notif.createdAt.toDate()).toLocaleDateString() : ''}</p>
                                        </div>
                                    ))}
                                </div>
@@ -135,7 +135,7 @@ const Header: React.FC = () => {
                                        <div key={ann.id} className="p-3 border-b border-gray-700 last:border-b-0 hover:bg-gray-800">
                                            <p className="font-semibold text-sm text-gray-200">{ann.title}</p>
                                            <p className="text-xs text-gray-400">{ann.body}</p>
-                                           <p className="text-right text-xs text-gray-500 mt-1">{new Date(ann.createdAt?.toDate()).toLocaleDateString()}</p>
+                                           <p className="text-right text-xs text-gray-500 mt-1">{ann.createdAt ? new Date(ann.createdAt.toDate()).toLocaleDateString() : ''}</p>
                                        </div>
                                    ))}
                                </div>

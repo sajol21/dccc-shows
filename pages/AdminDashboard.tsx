@@ -256,7 +256,7 @@ const AnnouncementsTab: React.FC<{ announcements: Announcement[], onUpdate: () =
                         <div key={ann.id} className="p-3 bg-gray-800 rounded-lg border border-gray-700">
                             <p className="font-bold text-white">{ann.title}</p>
                             <p className="text-sm text-gray-300">{ann.body}</p>
-                            <p className="text-xs text-gray-400 text-right mt-1">{new Date(ann.createdAt?.toDate()).toLocaleString()}</p>
+                            <p className="text-xs text-gray-400 text-right mt-1">{ann.createdAt ? new Date(ann.createdAt.toDate()).toLocaleString() : ''}</p>
                         </div>
                     ))}
                  </div>
