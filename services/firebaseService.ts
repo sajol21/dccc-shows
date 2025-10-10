@@ -1,5 +1,5 @@
 import { 
-  doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion, arrayRemove
+  doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion, arrayRemove, Timestamp
 } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage, auth } from '../config/firebase';
@@ -188,9 +188,10 @@ export const toggleLikePost = async (postId: string, userId: string): Promise<vo
 export const addSuggestion = async (postId: string, suggestionData: Omit<Suggestion, 'timestamp'>): Promise<void> => {
     const postRef = doc(db, 'posts', postId);
 
-    const newSuggestion = {
+    // serverTimestamp() cannot be used inside arrayUnion. Use a client-side timestamp instead.
+    const newSuggestion: Suggestion = {
       ...suggestionData,
-      timestamp: serverTimestamp()
+      timestamp: Timestamp.now()
     };
     
     await updateDoc(postRef, {
