@@ -1,4 +1,5 @@
 import React, { useState, useEffect, FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { UserProfile, Post, SiteConfig, Announcement, PromotionRequest } from '../types';
 import { 
   getAllUsers, 
@@ -43,7 +44,8 @@ const AdminDashboard: React.FC = () => {
         ]);
         setUsers(userData);
         setPosts(postData);
-        setSiteConfig(configData || { socials: {} });
+        // fix: Corrected the fallback value for siteConfig to match the Partial<SiteConfig> type. The previous value { socials: {} } was invalid because the 'socials' property requires specific string keys if present.
+        setSiteConfig(configData || {});
         setAnnouncements(announcementData);
         setPromotionRequests(requestData);
     } catch(err) {
@@ -172,7 +174,7 @@ const PostManagementTab: React.FC<{ posts: Post[], onApprove: (id: string, appro
         </tr></thead>
         <tbody className="divide-y divide-gray-700">
             {posts.map(post => (<tr key={post.id} className="hover:bg-gray-700/50">
-                <td className="px-4 py-2 whitespace-nowrap"><a href={`/#/post/${post.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">{post.title}</a></td>
+                <td className="px-4 py-2 whitespace-nowrap"><Link to={`/post/${post.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">{post.title}</Link></td>
                 <td className="px-4 py-2 whitespace-nowrap text-gray-200">{post.authorName}</td>
                 <td className="px-4 py-2 whitespace-nowrap">{post.approved ? <span className="text-green-400 font-semibold">Approved</span> : <span className="text-yellow-400 font-semibold">Pending</span>}</td>
                 <td className="px-4 py-2 flex space-x-2">

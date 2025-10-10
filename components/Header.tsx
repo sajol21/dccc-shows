@@ -22,6 +22,11 @@ const Header: React.FC = () => {
     if (userProfile) {
         unsubAnnouncements = onAnnouncementsUpdate(setAnnouncements);
         unsubNotifications = onNotificationsUpdate(userProfile.uid, setNotifications);
+    } else {
+        // When user logs out, clear the state
+        setAnnouncements([]);
+        setNotifications([]);
+        setUnreadCount(0);
     }
     
     return () => {
@@ -64,10 +69,6 @@ const Header: React.FC = () => {
              }
            }
         }
-      } else {
-        setUnreadCount(0);
-        setAnnouncements([]);
-        setNotifications([]);
       }
   }, [userProfile, announcements, notifications]);
 
@@ -192,7 +193,7 @@ const Header: React.FC = () => {
       </header>
       
       {/* Mobile Menu Overlay */}
-      <div className={`fixed inset-0 z-40 bg-gray-900/80 backdrop-blur-lg transition-opacity duration-300 ease-in-out ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setMobileMenuOpen(false)}>
+      <div className={`fixed inset-0 z-[100] bg-gray-900/80 backdrop-blur-lg transition-opacity duration-300 ease-in-out ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setMobileMenuOpen(false)}>
         <div className={`fixed top-0 right-0 h-full w-full flex flex-col items-center justify-center transition-transform duration-500 ease-in-out transform ${isMobileMenuOpen ? 'translate-y-0' : '-translate-y-10'}`}>
             <nav className="flex flex-col items-center justify-center text-center gap-4">
                 <NavLink to="/" isMobile>Home</NavLink>
