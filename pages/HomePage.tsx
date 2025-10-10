@@ -41,8 +41,8 @@ const HomePage: React.FC = () => {
     fetchData();
   }, []);
 
-  const ErrorDisplay = ({ message }: { message: string }) => (
-    <div className="bg-red-900/50 border border-red-400 text-red-300 px-4 py-3 rounded-xl my-4" role="alert">
+  const Alert: React.FC<{ message: string }> = ({ message }) => (
+    <div className="text-center text-red-400 bg-red-900/50 p-3 my-4 rounded-md" role="alert">
       <strong className="font-bold">Error: </strong>
       <span className="block sm:inline">{message}</span>
     </div>
@@ -64,7 +64,7 @@ const HomePage: React.FC = () => {
       {loading ? (
         <Spinner />
       ) : error ? (
-        <ErrorDisplay message={error} />
+        <Alert message={error} />
       ) : (
         <>
           {/* Admin-configurable Banner */}

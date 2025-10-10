@@ -1,7 +1,6 @@
 import { 
   doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion, arrayRemove, Timestamp, onSnapshot, Unsubscribe
 } from 'firebase/firestore';
-import { ref, deleteObject } from 'firebase/storage';
 import { db, storage, auth } from '../config/firebase';
 import { UserProfile, Post, Suggestion, PromotionRequest, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement, Notification } from '../types';
 import { UserRole, Province, LEADERBOARD_ROLES } from '../constants';

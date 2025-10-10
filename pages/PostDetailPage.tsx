@@ -220,13 +220,13 @@ const PostDetailPage: React.FC = () => {
                             <textarea value={newSuggestion} onChange={e => setNewSuggestion(e.target.value)} placeholder="Share your wisdom..." rows={3} className="w-full p-2 border rounded-md bg-gray-800 border-gray-600 text-gray-200" />
                             <div className="flex items-center gap-4 mt-2">
                                 <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Submit</button>
-                                {suggestionStatus && <p className="text-sm text-gray-400">{suggestionStatus}</p>}
+                                {suggestionStatus && <p className={`text-sm ${suggestionStatus.startsWith('Failed') ? 'text-red-400' : 'text-green-400'}`}>{suggestionStatus}</p>}
                             </div>
                         </form>
                     ) : <p>The audience awaits your feedback! <Link to="/login" className="text-blue-400 hover:underline">Log in</Link> to leave a suggestion.</p>}
                     <div className="space-y-4">
-                        {suggestions.map((sugg, index) => (
-                            <div key={index} className="bg-black/20 p-4 rounded-lg border border-gray-700">
+                        {suggestions.map((sugg) => (
+                            <div key={`${sugg.commenterId}-${sugg.timestamp.toDate().getTime()}`} className="bg-black/20 p-4 rounded-lg border border-gray-700">
                                 <p className="mb-2 text-gray-300">{sugg.text}</p>
                                 <div className="text-xs text-gray-500">
                                     <span>{sugg.commenterName} (Batch {sugg.commenterBatch})</span> - <span>{suggestionTimestampToDateString(sugg.timestamp)}</span>
@@ -291,16 +291,16 @@ const EditPostForm: React.FC<{ post: Post, onSuccess: () => void }> = ({ post, o
     return (
         <form onSubmit={handleSubmit} className="space-y-4 text-gray-200">
             <div>
-                <label>Title</label>
-                <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white" />
+                <label htmlFor="edit-title" className="block text-sm font-medium mb-1">Title</label>
+                <input id="edit-title" type="text" name="title" value={formData.title} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white" />
             </div>
             <div>
-                <label>Description</label>
-                <textarea name="description" value={formData.description} onChange={handleChange} rows={5} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white" />
+                <label htmlFor="edit-description" className="block text-sm font-medium mb-1">Description</label>
+                <textarea id="edit-description" name="description" value={formData.description} onChange={handleChange} rows={5} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white" />
             </div>
             <div>
-                <label>Province</label>
-                <select name="province" value={formData.province} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
+                <label htmlFor="edit-province" className="block text-sm font-medium mb-1">Province</label>
+                <select id="edit-province" name="province" value={formData.province} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
                     {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
             </div>

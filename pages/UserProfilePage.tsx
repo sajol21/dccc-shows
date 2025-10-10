@@ -114,7 +114,7 @@ const UserProfilePage: React.FC = () => {
   };
 
   if (loading || authLoading) return <Spinner />;
-  if (error) return <p className="text-center text-red-500">{error}</p>;
+  if (error) return <p className="text-center text-red-400 bg-red-900/50 p-3 rounded-md">{error}</p>;
   if (!profileData) return <p>Could not load profile.</p>;
   
   const canRequestPromotion = isOwner && NEXT_ROLE_MAP[profileData.role] && !pendingRequest;
@@ -142,21 +142,21 @@ const UserProfilePage: React.FC = () => {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                      <label className="font-semibold text-gray-300">Full Name:</label>
-                      {isEditing ? <input type="text" name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/> : <p className="text-gray-300">{profileData.name}</p>}
+                      <label htmlFor="profile-name" className="font-semibold text-gray-300">Full Name:</label>
+                      {isEditing ? <input id="profile-name" type="text" name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/> : <p className="text-gray-300">{profileData.name}</p>}
                   </div>
                   <div>
-                      <label className="font-semibold text-gray-300">Phone:</label>
-                      {isEditing ? <input type="text" name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/> : <p className="text-gray-300">{profileData.phone || 'Not provided'}</p>}
+                      <label htmlFor="profile-phone" className="font-semibold text-gray-300">Phone:</label>
+                      {isEditing ? <input id="profile-phone" type="text" name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/> : <p className="text-gray-300">{profileData.phone || 'Not provided'}</p>}
                   </div>
                   <div>
-                      <label className="font-semibold text-gray-300">Batch:</label>
-                      {isEditing ? <input type="text" name="batch" value={formData.batch || ''} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/> : <p className="text-gray-300">{profileData.batch || 'Not provided'}</p>}
+                      <label htmlFor="profile-batch" className="font-semibold text-gray-300">Batch:</label>
+                      {isEditing ? <input id="profile-batch" type="text" name="batch" value={formData.batch || ''} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/> : <p className="text-gray-300">{profileData.batch || 'Not provided'}</p>}
                   </div>
                    <div>
-                      <label className="font-semibold text-gray-300">Province:</label>
+                      <label htmlFor="profile-province" className="font-semibold text-gray-300">Province:</label>
                       {isEditing ? (
-                          <select name="province" value={formData.province || Province.CULTURAL} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
+                          <select id="profile-province" name="province" value={formData.province || Province.CULTURAL} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
                               {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
                           </select>
                       ) : <p className="text-gray-300">{profileData.province}</p>}
@@ -182,7 +182,7 @@ const UserProfilePage: React.FC = () => {
                         )}
                     </div>
                   )}
-                   {status && <p className="mt-4 text-center">{status}</p>}
+                   {status && <p className={`mt-4 text-center text-sm ${status.startsWith('Failed') ? 'text-red-400' : 'text-green-400'}`}>{status}</p>}
               </form>
           </div>
         </div>

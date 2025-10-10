@@ -44,7 +44,6 @@ const AdminDashboard: React.FC = () => {
         ]);
         setUsers(userData);
         setPosts(postData);
-        // fix: Corrected the fallback value for siteConfig to match the Partial<SiteConfig> type. The previous value { socials: {} } was invalid because the 'socials' property requires specific string keys if present.
         setSiteConfig(configData || {});
         setAnnouncements(announcementData);
         setPromotionRequests(requestData);
@@ -110,7 +109,7 @@ const AdminDashboard: React.FC = () => {
         <TabButton tab="settings" label="Site Settings" />
       </div>
 
-      {loading ? <Spinner /> : error ? <p className="text-red-400 bg-red-900/50 p-4 rounded-md">{error}</p> : (
+      {loading ? <Spinner /> : error ? <p className="text-center text-red-400 bg-red-900/50 p-3 rounded-md">{error}</p> : (
         <div>
           {activeTab === 'dashboard' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -246,8 +245,14 @@ const AnnouncementsTab: React.FC<{ announcements: Announcement[], onUpdate: () =
             <div>
                 <h3 className="text-xl font-semibold mb-4">Broadcast a New Message</h3>
                 <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-lg bg-gray-800 border-gray-700">
-                    <input type="text" placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white" />
-                    <textarea placeholder="Body" value={body} onChange={e => setBody(e.target.value)} rows={4} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white" />
+                    <div>
+                        <label htmlFor="ann-title" className="sr-only">Title</label>
+                        <input id="ann-title" type="text" placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white" />
+                    </div>
+                    <div>
+                        <label htmlFor="ann-body" className="sr-only">Body</label>
+                        <textarea id="ann-body" placeholder="Body" value={body} onChange={e => setBody(e.target.value)} rows={4} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white" />
+                    </div>
                     <button type="submit" disabled={submitting} className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400">{submitting ? 'Sending...' : 'Send Announcement'}</button>
                 </form>
             </div>
@@ -275,8 +280,14 @@ const SettingsTab: React.FC<{ siteConfig: Partial<SiteConfig>, onResetLeaderboar
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         if (name.includes('.')) {
-            const [parent, child] = name.split('.');
-            setConfig(prev => ({...prev, [parent]: { ...(prev as any)[parent], [child]: value }}));
+            const [parent, child] = name.split('.') as ['socials', string];
+             setConfig(prev => ({
+                ...prev,
+                [parent]: {
+                    ...prev[parent],
+                    [child]: value,
+                }
+            }));
         } else {
             setConfig(prev => ({...prev, [name]: value}));
         }
@@ -293,21 +304,24 @@ const SettingsTab: React.FC<{ siteConfig: Partial<SiteConfig>, onResetLeaderboar
             <div className="p-4 border rounded-lg bg-gray-800 border-gray-700">
                  <h3 className="font-bold mb-3 text-lg text-white">Site Configuration</h3>
                  <div className="space-y-3 max-w-xl">
-                    <label className="block text-sm font-medium">Minimum Role to Post</label>
-                    <select name="minRoleToPost" value={config.minRoleToPost || UserRole.GENERAL_MEMBER} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
+                    <label htmlFor="minRoleToPost" className="block text-sm font-medium">Minimum Role to Post</label>
+                    <select id="minRoleToPost" name="minRoleToPost" value={config.minRoleToPost || UserRole.GENERAL_MEMBER} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
                         <option value={UserRole.GENERAL_STUDENT}>General Student</option>
                         <option value={UserRole.GENERAL_MEMBER}>General Member</option>
                         <option value={UserRole.ASSOCIATE_MEMBER}>Associate Member</option>
                     </select>
-                    <label className="block text-sm font-medium mt-4">Contact & Socials</label>
-                    <input type="text" name="email" placeholder="Contact Email" value={config.email || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
-                    <input type="text" name="phone" placeholder="Contact Phone" value={config.phone || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
-                    <input type="text" name="socials.facebook" placeholder="Facebook URL" value={config.socials?.facebook || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
-                    <input type="text" name="socials.instagram" placeholder="Instagram URL" value={config.socials?.instagram || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
-                    <input type="text" name="socials.youtube" placeholder="YouTube URL" value={config.socials?.youtube || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
-                    <label className="block text-sm font-medium mt-4">Homepage Banner</label>
-                    <input type="text" name="bannerImageUrl" placeholder="Banner Image URL" value={config.bannerImageUrl || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
-                    <input type="text" name="bannerLinkUrl" placeholder="Banner Link URL" value={config.bannerLinkUrl || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+                    
+                    <label htmlFor="contactEmail" className="block text-sm font-medium mt-4">Contact & Socials</label>
+                    <input id="contactEmail" type="text" name="email" placeholder="Contact Email" value={config.email || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+                    <input id="contactPhone" type="text" name="phone" placeholder="Contact Phone" value={config.phone || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+                    <input id="socialFacebook" type="text" name="socials.facebook" placeholder="Facebook URL" value={config.socials?.facebook || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+                    <input id="socialInstagram" type="text" name="socials.instagram" placeholder="Instagram URL" value={config.socials?.instagram || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+                    <input id="socialYoutube" type="text" name="socials.youtube" placeholder="YouTube URL" value={config.socials?.youtube || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+                    
+                    <label htmlFor="bannerImageUrl" className="block text-sm font-medium mt-4">Homepage Banner</label>
+                    <input id="bannerImageUrl" type="text" name="bannerImageUrl" placeholder="Banner Image URL" value={config.bannerImageUrl || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+                    <input id="bannerLinkUrl" type="text" name="bannerLinkUrl" placeholder="Banner Link URL" value={config.bannerLinkUrl || ''} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+                    
                     <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save Site Settings</button>
                  </div>
             </div>

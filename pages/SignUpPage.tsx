@@ -41,7 +41,6 @@ const SignUpPage: React.FC = () => {
       setLoading(true);
       await signInWithGoogle();
       navigate('/profile');
-    // fix: Wrapped the catch block logic in curly braces to fix syntax error.
     } catch (err: any) {
       setError(err.message);
     } finally {

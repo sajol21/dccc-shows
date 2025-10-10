@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getPosts, createPost, getSiteConfig, getFeaturedPosts } from '../services/firebaseService';
 import { Post, SiteConfig } from '../types';
-// fix: Import LEADERBOARD_ROLES from constants
 import { Province, UserRole, PROVINCES, USER_ROLES, ROLE_HIERARCHY, LEADERBOARD_ROLES } from '../constants';
 import PostCard from '../components/PostCard';
 import Spinner from '../components/Spinner';
@@ -65,8 +64,8 @@ const ShowsPage: React.FC = () => {
     setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const ErrorDisplay = ({ message }: { message: string }) => (
-    <div className="bg-red-900/50 border border-red-400 text-red-300 px-4 py-3 rounded-xl my-8" role="alert">
+  const Alert: React.FC<{ message: string }> = ({ message }) => (
+    <div className="text-center text-red-400 bg-red-900/50 p-3 my-4 rounded-md" role="alert">
       <strong className="font-bold">Oops! </strong>
       <span className="block sm:inline">{message}</span>
     </div>
@@ -129,7 +128,7 @@ const ShowsPage: React.FC = () => {
       {loading && posts.length === 0 ? (
         <div className="py-8"><Spinner /></div>
       ) : error ? (
-        <ErrorDisplay message={error} />
+        <Alert message={error} />
       ) : posts.length > 0 ? (
         <>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -216,21 +215,43 @@ const CreatePostForm: React.FC<{onSuccess: () => void}> = ({onSuccess}) => {
     
     return (
         <form onSubmit={handleSubmit} className="space-y-4 text-gray-200">
-             {error && <p className="text-red-500 bg-red-900/50 p-2 rounded">{error}</p>}
-            <input type="text" placeholder="Title of your masterpiece" value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+             {error && <p className="text-center text-red-400 bg-red-900/50 p-3 rounded-md">{error}</p>}
+             <div>
+                <label htmlFor="post-title" className="sr-only">Title</label>
+                <input id="post-title" type="text" placeholder="Title of your masterpiece" value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+             </div>
             {type === 'Text' && (
-              <textarea placeholder="Tell us the story behind it..." value={description} onChange={e => setDescription(e.target.value)} rows={4} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+              <div>
+                <label htmlFor="post-description" className="sr-only">Description</label>
+                <textarea id="post-description" placeholder="Tell us the story behind it..." value={description} onChange={e => setDescription(e.target.value)} rows={4} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+              </div>
             )}
-            <select value={province} onChange={e => setProvince(e.target.value as Province)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
-                {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-            <select value={type} onChange={e => setType(e.target.value as any)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
-                <option value="Text">Text Only</option>
-                <option value="Image">Image Link</option>
-                <option value="Video">Video Link</option>
-            </select>
-            {(type === 'Image') && <input type="text" placeholder="Image URL (e.g., from Imgur, Cloudinary)" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>}
-            {(type === 'Video') && <input type="text" placeholder="YouTube/Vimeo URL" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>}
+             <div>
+                <label htmlFor="post-province" className="sr-only">Province</label>
+                <select id="post-province" value={province} onChange={e => setProvince(e.target.value as Province)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
+                    {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+            </div>
+             <div>
+                <label htmlFor="post-type" className="sr-only">Type</label>
+                <select id="post-type" value={type} onChange={e => setType(e.target.value as any)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
+                    <option value="Text">Text Only</option>
+                    <option value="Image">Image Link</option>
+                    <option value="Video">Video Link</option>
+                </select>
+            </div>
+            {(type === 'Image') && 
+                <div>
+                    <label htmlFor="post-image-url" className="sr-only">Image URL</label>
+                    <input id="post-image-url" type="text" placeholder="Image URL (e.g., from Imgur, Cloudinary)" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+                </div>
+            }
+            {(type === 'Video') && 
+                <div>
+                    <label htmlFor="post-video-url" className="sr-only">Video URL</label>
+                    <input id="post-video-url" type="text" placeholder="YouTube/Vimeo URL" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+                </div>
+            }
             <button type="submit" disabled={submitting} className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400">
                 {submitting ? 'Submitting...' : 'Submit Show'}
             </button>
