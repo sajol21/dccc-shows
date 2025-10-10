@@ -371,11 +371,16 @@ export const deletePost = async (post: Post): Promise<void> => {
     batch.delete(postRef);
 
     const userRef = doc(db, 'users', post.authorId);
+    
+    // Defensive check for missing properties on older documents
+    const likesCount = post.likes?.length || 0;
+    const suggestionsCount = post.suggestionsCount || 0;
+
     batch.update(userRef, {
         submissionsCount: increment(-1),
-        totalLikes: increment(-post.likes.length),
-        totalSuggestions: increment(-post.suggestionsCount),
-        leaderboardScore: increment(-(post.likes.length + post.suggestionsCount))
+        totalLikes: increment(-likesCount),
+        totalSuggestions: increment(-suggestionsCount),
+        leaderboardScore: increment(-(likesCount + suggestionsCount))
     });
     
     await batch.commit();

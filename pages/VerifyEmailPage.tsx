@@ -12,11 +12,12 @@ const VerifyEmailPage: React.FC = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
   const handleResend = async () => {
     setError('');
     setMessage('');
-    setLoading(true);
+    setResendLoading(true);
     try {
       if (!currentUser) {
         setError('You must be logged in to resend a verification email. Please log in again.');
@@ -27,9 +28,27 @@ const VerifyEmailPage: React.FC = () => {
     } catch (err) {
       setError('Failed to resend email. Please try again later.');
     } finally {
-      setLoading(false);
+      setResendLoading(false);
     }
   };
+
+  const handleCheckVerification = async () => {
+    setLoading(true);
+    setError('');
+    setMessage('');
+    if (currentUser) {
+      await currentUser.reload();
+      if (currentUser.emailVerified) {
+        navigate('/profile');
+      } else {
+        setError("Email still not verified. Please check your inbox (and spam folder!) and click the link.");
+      }
+    } else {
+      setError("You seem to be logged out. Please log in again.");
+    }
+    setLoading(false);
+  };
+
 
   const handleLogout = async () => {
     await logout();
@@ -48,13 +67,16 @@ const VerifyEmailPage: React.FC = () => {
           A verification link has been sent to <span className="font-bold text-blue-400">{email}</span>. Please check your inbox (and spam folder!) and click the link to activate your account.
         </p>
         <p className="text-gray-400 text-sm">
-          You must verify your email before you can access your profile and other content.
+          Once you have verified, click the button below to continue.
         </p>
         <div className="mt-6 space-y-4">
-          <button onClick={handleResend} disabled={loading} className="w-full flex justify-center py-3 px-4 text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-md transition-all duration-300 transform hover:scale-105 disabled:opacity-50">
-            {loading ? 'Sending...' : 'Resend Verification Email'}
+          <button onClick={handleCheckVerification} disabled={loading} className="w-full flex justify-center py-3 px-4 text-sm font-semibold rounded-lg text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-md transition-all duration-300 transform hover:scale-105 disabled:opacity-50">
+            {loading ? 'Checking...' : "I've Verified My Email"}
           </button>
-          <button onClick={handleLogout} className="text-gray-400 hover:text-gray-200 text-sm">
+          <button onClick={handleResend} disabled={resendLoading} className="w-full flex justify-center py-2 px-4 text-sm font-medium rounded-lg text-gray-300 bg-gray-700 hover:bg-gray-600 transition-colors disabled:opacity-50">
+            {resendLoading ? 'Sending...' : 'Resend Verification Email'}
+          </button>
+          <button onClick={handleLogout} className="text-gray-400 hover:text-gray-200 text-sm pt-2">
             Logout and go to Login
           </button>
         </div>
