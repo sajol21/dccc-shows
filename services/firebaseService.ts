@@ -1,0 +1,396 @@
+import { 
+  doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion
+} from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { db, storage, auth, rtdb } from '../config/firebase';
+import { UserProfile, Post, Suggestion, ContactMessage, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement } from '../types';
+import { UserRole, Province } from '../constants';
+import { signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { ref as rtdbRef, push, serverTimestamp as rtdbServerTimestamp, remove as rtdbRemove } from 'firebase/database';
+
+// User Management
+export const createUserProfile = async (uid: string, name: string, email: string, phone: string = '', batch: string = ''): Promise<void> => {
+  const userRef = doc(db, 'users', uid);
+  await setDoc(userRef, {
+    uid,
+    name,
+    email,
+    phone,
+    batch,
+    role: UserRole.GENERAL_STUDENT,
+    province: Province.CULTURAL,
+    totalLikes: 0,
+    submissionsCount: 0,
+    totalSuggestions: 0,
+    leaderboardScore: 0,
+    createdAt: serverTimestamp(),
+    readAnnouncements: [],
+  });
+};
+
+export const signInWithGoogle = async (): Promise<void> => {
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+
+    const userProfile = await getUserProfile(user.uid);
+    if (!userProfile) {
+        await createUserProfile(user.uid, user.displayName || 'New User', user.email || '', '', '');
+    }
+};
+
+export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
+  const userRef = doc(db, 'users', uid);
+  const docSnap = await getDoc(userRef);
+  if (docSnap.exists()) {
+    return docSnap.data() as UserProfile;
+  }
+  return null;
+};
+
+export const updateUserProfile = async (uid: string, data: Partial<UserProfile>): Promise<void> => {
+  const userRef = doc(db, 'users', uid);
+  await updateDoc(userRef, data);
+};
+
+export const logout = async (): Promise<void> => {
+  await signOut(auth);
+};
+
+
+// Post Management
+export const createPost = async (postData: Omit<Post, 'id' | 'timestamp' | 'likes' | 'suggestionsCount' | 'approved'>, file?: File): Promise<void> => {
+  let finalMediaURL = postData.mediaURL || '';
+  if (file) {
+    const storageRef = ref(storage, `posts/${Date.now()}_${file.name}`);
+    const snapshot = await uploadBytes(storageRef, file);
+    finalMediaURL = await getDownloadURL(snapshot.ref);
+  }
+
+  const { mediaURL, ...restOfPostData } = postData;
+
+  await addDoc(collection(db, 'posts'), {
+    ...restOfPostData,
+    mediaURL: finalMediaURL,
+    timestamp: serverTimestamp(),
+    likes: [],
+    suggestionsCount: 0,
+    approved: false,
+  });
+  
+  const userRef = doc(db, 'users', postData.authorId);
+  await updateDoc(userRef, {
+    submissionsCount: increment(1)
+  });
+};
+
+export const updatePost = async (postId: string, data: Partial<Post>): Promise<void> => {
+    const postRef = doc(db, 'posts', postId);
+    await updateDoc(postRef, data);
+};
+
+export const getPost = async (postId: string): Promise<Post | null> => {
+    const postRef = doc(db, 'posts', postId);
+    const docSnap = await getDoc(postRef);
+    if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as Post;
+    }
+    return null;
+}
+
+export const getPosts = async (lastVisible?: DocumentSnapshot, filters: any = {}): Promise<{ posts: Post[], lastVisible: DocumentSnapshot | null }> => {
+    let q = query(collection(db, 'posts'), where('approved', '==', true), orderBy('timestamp', 'desc'));
+
+    if (filters.province) {
+        q = query(q, where('province', '==', filters.province));
+    }
+    if (filters.role) {
+        q = query(q, where('authorRole', '==', filters.role));
+    }
+    if (filters.batch) {
+        q = query(q, where('authorBatch', '==', filters.batch));
+    }
+    
+    q = query(q, limit(10));
+
+    if (lastVisible) {
+        q = query(q, startAfter(lastVisible));
+    }
+
+    const querySnapshot = await getDocs(q);
+    const posts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+    const newLastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+
+    return { posts, lastVisible: newLastVisible || null };
+};
+
+export const getPostsByAuthor = async (authorId: string): Promise<Post[]> => {
+    const q = query(
+        collection(db, 'posts'), 
+        where('authorId', '==', authorId), 
+        where('approved', '==', true), 
+        orderBy('timestamp', 'desc')
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+};
+
+export const toggleLikePost = async (postId: string, userId: string): Promise<void> => {
+    const postRef = doc(db, 'posts', postId);
+    const postSnap = await getDoc(postRef);
+    if (!postSnap.exists()) return;
+
+    const post = postSnap.data() as Post;
+    const authorRef = doc(db, 'users', post.authorId);
+    
+    const batch = writeBatch(db);
+
+    if (post.likes.includes(userId)) {
+        batch.update(postRef, { likes: post.likes.filter(id => id !== userId) });
+        batch.update(authorRef, { 
+            totalLikes: increment(-1),
+            leaderboardScore: increment(-1)
+        });
+    } else {
+        batch.update(postRef, { likes: [...post.likes, userId] });
+        batch.update(authorRef, {
+            totalLikes: increment(1),
+            leaderboardScore: increment(1)
+        });
+    }
+    await batch.commit();
+};
+
+
+// Suggestion Management
+export const addSuggestion = async (suggestionData: Omit<Suggestion, 'id' | 'timestamp'>, authorId: string): Promise<void> => {
+  const suggestionsRef = rtdbRef(rtdb, `suggestions/${suggestionData.postId}`);
+  await push(suggestionsRef, {
+    ...suggestionData,
+    timestamp: rtdbServerTimestamp(),
+  });
+  
+  const batch = writeBatch(db);
+  
+  const postRef = doc(db, 'posts', suggestionData.postId);
+  batch.update(postRef, {
+    suggestionsCount: increment(1)
+  });
+  
+  const authorRef = doc(db, 'users', authorId);
+  batch.update(authorRef, {
+      totalSuggestions: increment(1),
+      leaderboardScore: increment(1)
+  });
+  
+  await batch.commit();
+};
+
+export const deleteSuggestion = async (postId: string, suggestionId: string): Promise<void> => {
+    const post = await getPost(postId);
+    if (!post) {
+        console.error("Post not found, cannot delete suggestion or update stats.");
+        return;
+    }
+    const suggestionRef = rtdbRef(rtdb, `suggestions/${postId}/${suggestionId}`);
+    await rtdbRemove(suggestionRef);
+    
+    const batch = writeBatch(db);
+
+    const postRef = doc(db, 'posts', postId);
+    batch.update(postRef, {
+        suggestionsCount: increment(-1)
+    });
+
+    const authorRef = doc(db, 'users', post.authorId);
+    batch.update(authorRef, {
+        totalSuggestions: increment(-1),
+        leaderboardScore: increment(-1)
+    });
+    
+    await batch.commit();
+};
+
+
+// Leaderboard
+export const getLeaderboardUsers = async (): Promise<UserProfile[]> => {
+    const q = query(collection(db, 'users'), orderBy('leaderboardScore', 'desc'), limit(50));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => doc.data() as UserProfile);
+};
+
+export const getLeaderboardArchives = async (): Promise<{id: string}[]> => {
+    const q = query(collection(db, 'leaderboard_archives'), orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id }));
+};
+
+export const getArchivedLeaderboard = async (archiveId: string): Promise<LeaderboardArchive | null> => {
+    const docRef = doc(db, 'leaderboard_archives', archiveId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as LeaderboardArchive;
+    }
+    return null;
+};
+
+
+// Site Settings
+export const getSiteConfig = async (): Promise<SiteConfig | null> => {
+    const docRef = doc(db, 'settings', 'siteConfig');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return docSnap.data() as SiteConfig;
+    }
+    return null;
+}
+
+export const updateSiteConfig = async (data: Partial<SiteConfig>): Promise<void> => {
+    const docRef = doc(db, 'settings', 'siteConfig');
+    await setDoc(docRef, data, { merge: true });
+}
+
+// Announcements
+export const createAnnouncement = async (title: string, body: string): Promise<void> => {
+    await addDoc(collection(db, 'announcements'), {
+        title,
+        body,
+        createdAt: serverTimestamp(),
+    });
+};
+
+export const getAnnouncements = async (): Promise<Announcement[]> => {
+    const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(10));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Announcement);
+};
+
+export const markAnnouncementsAsRead = async (userId: string, announcementIds: string[]): Promise<void> => {
+    if (announcementIds.length === 0) return;
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+        readAnnouncements: arrayUnion(...announcementIds)
+    });
+};
+
+
+// About Page
+export const getCommitteeMembers = async (): Promise<UserProfile[]> => {
+    const q = query(
+        collection(db, 'users'), 
+        where('role', 'in', [UserRole.ADMIN, UserRole.EXECUTIVE_MEMBER])
+    );
+    const querySnapshot = await getDocs(q);
+    const members = querySnapshot.docs.map(doc => doc.data() as UserProfile);
+    // Sort admins first, then by name
+    return members.sort((a, b) => {
+        if (a.role === UserRole.ADMIN && b.role !== UserRole.ADMIN) return -1;
+        if (a.role !== UserRole.ADMIN && b.role === UserRole.ADMIN) return 1;
+        return a.name.localeCompare(b.name);
+    });
+};
+
+
+// Admin Functions
+export const getAllUsers = async (): Promise<UserProfile[]> => {
+    const querySnapshot = await getDocs(collection(db, 'users'));
+    return querySnapshot.docs.map(doc => doc.data() as UserProfile);
+}
+
+export const updateUserRole = async (uid: string, role: UserRole): Promise<void> => {
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, { role });
+}
+
+export const getAllPostsAdmin = async (): Promise<Post[]> => {
+    const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+}
+
+export const approvePost = async (postId: string, approved: boolean): Promise<void> => {
+    const postRef = doc(db, 'posts', postId);
+    await updateDoc(postRef, { approved });
+}
+
+export const deletePost = async (post: Post): Promise<void> => {
+    if(post.mediaURL && post.type === 'Image') {
+        try {
+            const fileRef = ref(storage, post.mediaURL);
+            await deleteObject(fileRef);
+        } catch (err) {
+            console.error("Error deleting file:", err);
+        }
+    }
+    
+    const suggestionsRef = rtdbRef(rtdb, `suggestions/${post.id}`);
+    await rtdbRemove(suggestionsRef);
+    
+    const batch = writeBatch(db);
+    
+    const postRef = doc(db, 'posts', post.id);
+    batch.delete(postRef);
+
+    const userRef = doc(db, 'users', post.authorId);
+    batch.update(userRef, {
+        submissionsCount: increment(-1),
+        totalLikes: increment(-post.likes.length),
+        totalSuggestions: increment(-post.suggestionsCount),
+        leaderboardScore: increment(-(post.likes.length + post.suggestionsCount))
+    });
+    
+    await batch.commit();
+}
+
+export const getContactMessages = async (): Promise<ContactMessage[]> => {
+    const q = query(collection(db, 'contacts'), orderBy('timestamp', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContactMessage));
+};
+
+export const deleteContactMessage = async (id: string): Promise<void> => {
+    const messageRef = doc(db, 'contacts', id);
+    await deleteDoc(messageRef);
+};
+
+export const resetLeaderboard = async (): Promise<void> => {
+    // 1. Get current top users to archive them
+    const topUsersQuery = query(collection(db, 'users'), where('leaderboardScore', '>', 0), orderBy('leaderboardScore', 'desc'));
+    const topUsersSnapshot = await getDocs(topUsersQuery);
+
+    const usersToArchive: ArchivedUser[] = topUsersSnapshot.docs.map(doc => {
+        const user = doc.data() as UserProfile;
+        return {
+            uid: user.uid,
+            name: user.name,
+            batch: user.batch,
+            role: user.role,
+            leaderboardScore: user.leaderboardScore,
+        };
+    });
+
+    // 2. Create archive document if there are users with scores
+    if (usersToArchive.length > 0) {
+        const now = new Date();
+        // Use last month's date for the archive ID
+        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const archiveId = `${lastMonth.getFullYear()}-${(lastMonth.getMonth() + 1).toString().padStart(2, '0')}`;
+        
+        const archiveRef = doc(db, 'leaderboard_archives', archiveId);
+        await setDoc(archiveRef, {
+            createdAt: serverTimestamp(),
+            users: usersToArchive,
+        });
+    }
+
+    // 3. Reset scores for all users who had a score
+    const batch = writeBatch(db);
+    topUsersSnapshot.forEach(userDoc => {
+        batch.update(userDoc.ref, { 
+            totalLikes: 0,
+            totalSuggestions: 0,
+            leaderboardScore: 0
+        });
+    });
+    await batch.commit();
+}

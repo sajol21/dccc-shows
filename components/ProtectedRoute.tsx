@@ -1,0 +1,21 @@
+
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import Spinner from './Spinner';
+
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { currentUser, loading } = useAuth();
+
+  if (loading) {
+    return <div className="h-screen flex items-center justify-center"><Spinner /></div>;
+  }
+
+  if (!currentUser) {
+    return <Navigate to="/login" />;
+  }
+
+  return <>{children}</>;
+};
+
+export default ProtectedRoute;

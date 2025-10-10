@@ -1,0 +1,241 @@
+import React, { useEffect, useState, FormEvent } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { getPost, addSuggestion, toggleLikePost, deletePost, updatePost } from '../services/firebaseService';
+import { Post, Suggestion } from '../types';
+import { Province, PROVINCES, UserRole } from '../constants';
+import { useAuth } from '../hooks/useAuth';
+import Spinner from '../components/Spinner';
+import Modal from '../components/Modal';
+import RoleBadge from '../components/RoleBadge';
+import { rtdb } from '../config/firebase';
+import { ref, onValue, off } from 'firebase/database';
+
+const getEmbedUrl = (url: string | undefined): string => {
+    if (!url) return '';
+    try {
+        if (url.includes('youtube.com/watch')) {
+            const videoId = new URL(url).searchParams.get('v');
+            return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+        }
+        if (url.includes('youtu.be/')) {
+            const videoId = new URL(url).pathname.split('/').pop();
+            return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+        }
+        if (url.includes('vimeo.com/')) {
+            const videoId = new URL(url).pathname.split('/').pop();
+            return videoId ? `https://player.vimeo.com/video/${videoId}` : url;
+        }
+    } catch (e) {
+        console.error('Error parsing video URL', e);
+        return url;
+    }
+    return url;
+};
+
+const PostDetailPage: React.FC = () => {
+    const { id } = useParams<{ id: string }>();
+    const { currentUser, userProfile } = useAuth();
+    const navigate = useNavigate();
+    const [post, setPost] = useState<Post | null>(null);
+    const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+    const [newSuggestion, setNewSuggestion] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [isLiked, setIsLiked] = useState(false);
+    const [isEditModalOpen, setEditModalOpen] = useState(false);
+
+    const fetchPostData = async () => {
+        if (!id) return;
+        const postData = await getPost(id);
+        setPost(postData);
+        if (postData && currentUser) {
+            setIsLiked(postData.likes.includes(currentUser.uid));
+        }
+    };
+
+    useEffect(() => {
+        if (!id) return;
+        setLoading(true);
+        fetchPostData().finally(() => setLoading(false));
+        
+        const suggestionsRef = ref(rtdb, `suggestions/${id}`);
+        const listener = onValue(suggestionsRef, (snapshot) => {
+            const data = snapshot.val();
+            const suggestionsList = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })).sort((a, b) => b.timestamp - a.timestamp) : [];
+            setSuggestions(suggestionsList);
+        });
+
+        return () => off(suggestionsRef, 'value', listener);
+
+    }, [id, currentUser]);
+
+    const handleSuggestionSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!id || !userProfile || !post || !newSuggestion.trim()) return;
+        await addSuggestion({
+            postId: id,
+            commenterId: userProfile.uid,
+            commenterName: userProfile.name,
+            commenterBatch: userProfile.batch,
+            text: newSuggestion,
+        }, post.authorId);
+        setNewSuggestion('');
+    };
+
+    const handleLike = async () => {
+        if (!id || !currentUser) return;
+        await toggleLikePost(id, currentUser.uid);
+        setIsLiked(!isLiked);
+        setPost(prev => prev ? {...prev, likes: isLiked ? prev.likes.filter(uid => uid !== currentUser.uid) : [...prev.likes, currentUser.uid]} : null);
+    };
+
+    const handleDelete = async () => {
+        if (!post) return;
+        if (window.confirm('Are you sure you want to permanently delete this post?')) {
+            try {
+                await deletePost(post);
+                alert('Post deleted successfully.');
+                navigate('/shows');
+            } catch (err) {
+                console.error(err);
+                alert('Failed to delete post. Please try again.');
+            }
+        }
+    };
+
+    if (loading) return <Spinner />;
+    if (!post) return <p>Post not found.</p>;
+    
+    const isOwner = currentUser?.uid === post?.authorId;
+    const isAdmin = userProfile?.role === UserRole.ADMIN;
+    
+    const postDate = post.timestamp?.toDate();
+    const formattedDate = postDate ? postDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
+    const formattedTime = postDate ? postDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : 'N/A';
+
+    return (
+      <>
+        <div className="bg-white/10 dark:bg-black/20 backdrop-blur-lg rounded-xl border border-white/20 shadow-xl overflow-hidden">
+            {post.mediaURL && post.type === 'Image' && <img src={post.mediaURL} alt={post.title} className="w-full h-64 md:h-96 object-cover"/>}
+            {post.mediaURL && post.type === 'Video' && (
+                <div className="aspect-w-16 aspect-h-9 bg-black">
+                    <iframe src={getEmbedUrl(post.mediaURL)} frameBorder="0" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title={post.title} className="w-full h-full"></iframe>
+                </div>
+            )}
+            
+            <div className="p-6 md:p-10">
+                <header className="mb-6 flex flex-col sm:flex-row justify-between items-start gap-4">
+                    <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">{post.title}</h1>
+                    <div className="flex-shrink-0 flex gap-2">
+                        {(isOwner || isAdmin) && (
+                            <button onClick={handleDelete} className="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-md hover:bg-red-700">DELETE</button>
+                        )}
+                        {isAdmin && (
+                            <button onClick={() => setEditModalOpen(true)} className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700">EDIT</button>
+                        )}
+                    </div>
+                </header>
+
+                <div className="bg-black/10 dark:bg-black/20 p-6 rounded-lg mb-6 border border-white/10">
+                    <article className="prose dark:prose-invert max-w-none text-lg text-gray-800 dark:text-gray-200">
+                        <p>{post.description}</p>
+                    </article>
+                </div>
+                
+                <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2 mb-6">
+                    <div className="flex items-center gap-2">
+                        <Link to={`/user/${post.authorId}`} className="font-semibold hover:underline text-gray-800 dark:text-gray-200">{post.authorName}</Link>
+                        <RoleBadge role={post.authorRole} />
+                    </div>
+                    <p><strong>Batch:</strong> HSC - {post.authorBatch}</p>
+                    <p><strong>Date:</strong> {formattedDate}</p>
+                    <p><strong>Time:</strong> {formattedTime}</p>
+                </div>
+
+
+                <div className="flex items-center space-x-6 py-4 border-t border-b border-white/20 dark:border-gray-700">
+                    <button onClick={handleLike} className={`flex items-center space-x-2 text-lg font-semibold transition-colors ${isLiked ? 'text-red-500' : 'text-gray-600 dark:text-gray-300 hover:text-red-400'}`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" /></svg>
+                        <span>{post.likes.length} Likes</span>
+                    </button>
+                    <div className="flex items-center space-x-2 text-lg text-gray-600 dark:text-gray-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm2 1v8h12V6H4zm3 3h6v2H7V9z" /></svg>
+                        <span>{suggestions.length} Suggestions</span>
+                    </div>
+                </div>
+
+                <section className="mt-8">
+                    <h2 className="text-2xl font-bold mb-4">Suggestions & Feedback</h2>
+                    {currentUser ? (
+                        <form onSubmit={handleSuggestionSubmit} className="mb-6">
+                            <textarea value={newSuggestion} onChange={e => setNewSuggestion(e.target.value)} placeholder="Write a suggestion..." rows={3} className="w-full p-2 border rounded-md bg-white/20 dark:bg-gray-700/50 border-white/20 dark:border-gray-600 backdrop-blur-sm" />
+                            <button type="submit" className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Submit</button>
+                        </form>
+                    ) : <p>Please log in to leave a suggestion.</p>}
+                    <div className="space-y-4">
+                        {suggestions.map(sugg => (
+                            <div key={sugg.id} className="bg-black/5 dark:bg-gray-800/50 p-4 rounded-lg">
+                                <p className="mb-2">{sugg.text}</p>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    <span>{sugg.commenterName} (Batch {sugg.commenterBatch})</span> - <span>{new Date(sugg.timestamp as number).toLocaleString()}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            </div>
+        </div>
+        <Modal isOpen={isEditModalOpen} onClose={() => setEditModalOpen(false)} title="Edit Post">
+            <EditPostForm post={post} onSuccess={() => { setEditModalOpen(false); fetchPostData(); }} />
+        </Modal>
+      </>
+    );
+};
+
+// Edit Post Form Component
+const EditPostForm: React.FC<{ post: Post, onSuccess: () => void }> = ({ post, onSuccess }) => {
+    const [formData, setFormData] = useState({ title: post.title, description: post.description, province: post.province });
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        setSubmitting(true);
+        try {
+            await updatePost(post.id, formData);
+            alert('Post updated successfully!');
+            onSuccess();
+        } catch (err) {
+            console.error(err);
+            alert('Failed to update post.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label>Title</label>
+                <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600" />
+            </div>
+            <div>
+                <label>Description</label>
+                <textarea name="description" value={formData.description} onChange={handleChange} rows={5} className="w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600" />
+            </div>
+            <div>
+                <label>Province</label>
+                <select name="province" value={formData.province} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
+                    {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+            </div>
+            <button type="submit" disabled={submitting} className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400">
+                {submitting ? 'Saving...' : 'Save Changes'}
+            </button>
+        </form>
+    );
+};
+
+export default PostDetailPage;

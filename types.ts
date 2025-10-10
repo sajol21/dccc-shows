@@ -1,0 +1,86 @@
+import { Timestamp } from 'firebase/firestore';
+import { UserRole, Province } from './constants';
+
+export interface UserProfile {
+  uid: string;
+  name: string;
+  email: string;
+  phone: string;
+  batch: string;
+  role: UserRole;
+  province: Province;
+  totalLikes: number;
+  submissionsCount: number;
+  totalSuggestions: number;
+  leaderboardScore: number;
+  createdAt: Timestamp;
+  readAnnouncements: string[];
+}
+
+export interface Post {
+  id: string;
+  title: string;
+  description: string;
+  type: 'Text' | 'Image' | 'Video';
+  mediaURL?: string;
+  province: Province;
+  authorId: string;
+  authorName: string;
+  authorBatch: string;
+  authorRole: UserRole;
+  approved: boolean;
+  timestamp: Timestamp;
+  likes: string[]; // Array of user UIDs who liked
+  suggestionsCount: number;
+}
+
+export interface Suggestion {
+  id: string;
+  postId: string;
+  commenterId: string;
+  commenterName: string;
+  commenterBatch: string;
+  text: string;
+  timestamp: Timestamp | number;
+}
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  message: string;
+  timestamp: Timestamp;
+}
+
+export interface ArchivedUser {
+    uid: string;
+    name: string;
+    batch: string;
+    role: UserRole;
+    leaderboardScore: number;
+}
+
+export interface LeaderboardArchive {
+    id: string; // YYYY-MM format
+    createdAt: Timestamp;
+    users: ArchivedUser[];
+}
+
+export interface SiteConfig {
+    phone: string;
+    email: string;
+    socials: {
+        facebook: string;
+        instagram: string;
+        youtube: string;
+    };
+    bannerImageUrl: string;
+    bannerLinkUrl: string;
+}
+
+export interface Announcement {
+    id: string;
+    title: string;
+    body: string;
+    createdAt: Timestamp;
+}
