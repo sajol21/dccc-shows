@@ -1,33 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { logout, getAnnouncements, markAnnouncementsAsRead } from '../services/firebaseService';
+import { logout, getAnnouncements, markAnnouncementsAsRead, getNotifications, markNotificationsAsRead } from '../services/firebaseService';
 import { UserRole } from '../constants';
-import { Announcement } from '../types';
+import { Announcement, Notification as NotificationType } from '../types';
 
 const Header: React.FC = () => {
   const { currentUser, userProfile, loading } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isAnnouncementsOpen, setAnnouncementsOpen] = useState(false);
+  const [isNotificationsOpen, setNotificationsOpen] = useState(false);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [notifications, setNotifications] = useState<NotificationType[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     if (userProfile) {
-      const fetchAnnouncements = async () => {
-        const allAnnouncements = await getAnnouncements();
-        setAnnouncements(allAnnouncements);
-        const read = userProfile.readAnnouncements || [];
-        const newUnreadCount = allAnnouncements.filter(a => !read.includes(a.id)).length;
-        setUnreadCount(newUnreadCount);
+      const fetchNotifications = async () => {
+        const [allAnnouncements, personalNotifications] = await Promise.all([
+          getAnnouncements(),
+          getNotifications(userProfile.uid)
+        ]);
 
-        if (newUnreadCount > 0 && Notification.permission === 'granted') {
-           const latestUnread = allAnnouncements.filter(a => !read.includes(a.id))[0];
-           new Notification(latestUnread.title, { body: latestUnread.body, icon: '/vite.svg' });
+        setAnnouncements(allAnnouncements);
+        setNotifications(personalNotifications);
+
+        const readAnnouncements = userProfile.readAnnouncements || [];
+        const unreadAnnouncements = allAnnouncements.filter(a => !readAnnouncements.includes(a.id)).length;
+        
+        const readNotifications = userProfile.readNotifications || [];
+        const unreadNotifications = personalNotifications.filter(n => !readNotifications.includes(n.id)).length;
+
+        const totalUnread = unreadAnnouncements + unreadNotifications;
+        setUnreadCount(totalUnread);
+
+        if (totalUnread > 0 && Notification.permission === 'granted') {
+           const latestUnreadAnn = allAnnouncements.filter(a => !readAnnouncements.includes(a.id))[0];
+           if (latestUnreadAnn) {
+             new Notification(latestUnreadAnn.title, { body: latestUnreadAnn.body, icon: '/vite.svg' });
+           }
         }
       };
-      fetchAnnouncements();
+      fetchNotifications();
     }
   }, [userProfile, loading]);
 
@@ -50,12 +64,17 @@ const Header: React.FC = () => {
     navigate('/login');
   };
   
-  const handleAnnouncementsOpen = async () => {
-      setAnnouncementsOpen(true);
+  const handleNotificationsOpen = async () => {
+      setNotificationsOpen(true);
       if (userProfile && unreadCount > 0) {
-          const read = userProfile.readAnnouncements || [];
-          const unreadIds = announcements.filter(a => !read.includes(a.id)).map(a => a.id);
-          await markAnnouncementsAsRead(userProfile.uid, unreadIds);
+          const readAnn = userProfile.readAnnouncements || [];
+          const unreadAnnIds = announcements.filter(a => !readAnn.includes(a.id)).map(a => a.id);
+          if(unreadAnnIds.length > 0) await markAnnouncementsAsRead(userProfile.uid, unreadAnnIds);
+          
+          const readNotif = userProfile.readNotifications || [];
+          const unreadNotifIds = notifications.filter(n => !readNotif.includes(n.id)).map(n => n.id);
+          if(unreadNotifIds.length > 0) await markNotificationsAsRead(userProfile.uid, unreadNotifIds);
+          
           setUnreadCount(0);
       }
   }
@@ -90,21 +109,38 @@ const Header: React.FC = () => {
           <div className="flex items-center gap-2">
             {currentUser && (
                 <div className="relative">
-                    <button onClick={handleAnnouncementsOpen} className="relative p-2 rounded-full text-gray-400 hover:bg-gray-700 transition-colors">
+                    <button onClick={handleNotificationsOpen} className="relative p-2 rounded-full text-gray-400 hover:bg-gray-700 transition-colors">
                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
                        {unreadCount > 0 && <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-gray-900"></span>}
                     </button>
-                    {isAnnouncementsOpen && (
-                        <div onMouseLeave={() => setAnnouncementsOpen(false)} className="absolute right-0 mt-2 w-80 bg-gray-900/80 backdrop-blur-md rounded-lg shadow-xl border border-gray-700 overflow-hidden">
-                           <div className="p-3 font-bold text-center border-b border-gray-700 text-gray-200">Announcements</div>
-                           <div className="max-h-96 overflow-y-auto">
-                           {announcements.length > 0 ? announcements.map(ann => (
-                               <div key={ann.id} className="p-3 border-b border-gray-700 last:border-b-0 hover:bg-gray-800">
-                                   <p className="font-semibold text-sm text-gray-200">{ann.title}</p>
-                                   <p className="text-xs text-gray-400">{ann.body}</p>
-                                   <p className="text-right text-xs text-gray-500 mt-1">{new Date(ann.createdAt?.toDate()).toLocaleDateString()}</p>
+                    {isNotificationsOpen && (
+                        <div onMouseLeave={() => setNotificationsOpen(false)} className="absolute right-0 mt-2 w-80 bg-gray-900/80 backdrop-blur-md rounded-lg shadow-xl border border-gray-700 overflow-hidden">
+                           <div className="max-h-[70vh] overflow-y-auto">
+                           {notifications.length > 0 && (
+                               <div>
+                                   <div className="p-3 font-bold text-center border-b border-gray-700 text-gray-200 bg-gray-800/50 sticky top-0">Personal</div>
+                                   {notifications.map(notif => (
+                                       <div key={notif.id} className="p-3 border-b border-gray-700 last:border-b-0 hover:bg-gray-800">
+                                           <p className="font-semibold text-sm text-blue-300">{notif.title}</p>
+                                           <p className="text-xs text-gray-400">{notif.body}</p>
+                                           <p className="text-right text-xs text-gray-500 mt-1">{new Date(notif.createdAt?.toDate()).toLocaleDateString()}</p>
+                                       </div>
+                                   ))}
                                </div>
-                           )) : <p className="p-4 text-center text-sm text-gray-500">The stage is quiet... for now.</p>}
+                           )}
+                           {announcements.length > 0 && (
+                               <div>
+                                   <div className="p-3 font-bold text-center border-b border-gray-700 text-gray-200 bg-gray-800/50 sticky top-0">Announcements</div>
+                                   {announcements.map(ann => (
+                                       <div key={ann.id} className="p-3 border-b border-gray-700 last:border-b-0 hover:bg-gray-800">
+                                           <p className="font-semibold text-sm text-gray-200">{ann.title}</p>
+                                           <p className="text-xs text-gray-400">{ann.body}</p>
+                                           <p className="text-right text-xs text-gray-500 mt-1">{new Date(ann.createdAt?.toDate()).toLocaleDateString()}</p>
+                                       </div>
+                                   ))}
+                               </div>
+                           )}
+                           {notifications.length === 0 && announcements.length === 0 && <p className="p-4 text-center text-sm text-gray-500">The stage is quiet... for now.</p>}
                            </div>
                         </div>
                     )}

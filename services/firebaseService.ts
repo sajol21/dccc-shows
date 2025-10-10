@@ -3,7 +3,7 @@ import {
 } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage, auth } from '../config/firebase';
-import { UserProfile, Post, Suggestion, PromotionRequest, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement } from '../types';
+import { UserProfile, Post, Suggestion, PromotionRequest, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement, Notification } from '../types';
 import { UserRole, Province, LEADERBOARD_ROLES } from '../constants';
 import { signOut, GoogleAuthProvider, signInWithPopup, sendEmailVerification } from 'firebase/auth';
 
@@ -24,6 +24,7 @@ export const createUserProfile = async (uid: string, name: string, email: string
     leaderboardScore: 0,
     createdAt: serverTimestamp(),
     readAnnouncements: [],
+    readNotifications: [],
   });
 };
 
@@ -167,40 +168,56 @@ export const toggleLikePost = async (postId: string, userId: string): Promise<vo
     const postSnap = await getDoc(postRef);
     if (!postSnap.exists()) return;
 
+    const batch = writeBatch(db);
     const post = postSnap.data() as Post;
+    const authorRef = doc(db, 'users', post.authorId);
     const currentLikes = post.likes || [];
     
-    if (currentLikes.includes(userId)) {
-        // Unlike
-        await updateDoc(postRef, { likes: arrayRemove(userId) });
-    } else {
-        // Like
-        await updateDoc(postRef, { likes: arrayUnion(userId) });
-    }
-    
-    // Note: The logic to update the author's totalLikes and leaderboardScore has been removed
-    // to prevent permission errors where one user cannot update another user's profile.
-    // This functionality should ideally be handled by a backend Cloud Function.
+    const isLiked = currentLikes.includes(userId);
+    const likeIncrement = isLiked ? -1 : 1;
+
+    // Update post likes array
+    batch.update(postRef, { 
+        likes: isLiked ? arrayRemove(userId) : arrayUnion(userId) 
+    });
+
+    // Update author's stats
+    batch.update(authorRef, {
+        totalLikes: increment(likeIncrement),
+        leaderboardScore: increment(likeIncrement)
+    });
+
+    await batch.commit();
 };
 
 
 // Suggestion Management
 export const addSuggestion = async (postId: string, suggestionData: Omit<Suggestion, 'timestamp'>): Promise<void> => {
     const postRef = doc(db, 'posts', postId);
+    const postSnap = await getDoc(postRef);
+    if (!postSnap.exists()) return;
 
-    // serverTimestamp() cannot be used inside arrayUnion. Use a client-side timestamp instead.
+    const batch = writeBatch(db);
+    const post = postSnap.data() as Post;
+    const authorRef = doc(db, 'users', post.authorId);
+    
     const newSuggestion: Suggestion = {
       ...suggestionData,
       timestamp: Timestamp.now()
     };
     
-    await updateDoc(postRef, {
+    // Update post suggestions array
+    batch.update(postRef, {
       suggestions: arrayUnion(newSuggestion)
     });
 
-    // Note: The logic to update the author's totalSuggestions and leaderboardScore has been removed
-    // to prevent permission errors where one user cannot update another user's profile.
-    // This functionality should ideally be handled by a backend Cloud Function.
+    // Update author's stats (e.g., 5 points per suggestion)
+    batch.update(authorRef, {
+        totalSuggestions: increment(1),
+        leaderboardScore: increment(5)
+    });
+
+    await batch.commit();
 };
 
 
@@ -255,7 +272,29 @@ export const updateSiteConfig = async (data: Partial<SiteConfig>): Promise<void>
     await setDoc(docRef, data, { merge: true });
 }
 
-// Announcements
+// Announcements & Notifications
+const createNotification = async (userId: string, title: string, body: string, link: string = ''): Promise<void> => {
+    await addDoc(collection(db, 'notifications'), {
+        userId,
+        title,
+        body,
+        link,
+        read: false,
+        createdAt: serverTimestamp()
+    });
+};
+
+export const getNotifications = async (userId: string): Promise<Notification[]> => {
+    const q = query(
+        collection(db, 'notifications'),
+        where('userId', '==', userId),
+        orderBy('createdAt', 'desc'),
+        limit(15)
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as Notification);
+};
+
 export const createAnnouncement = async (title: string, body: string): Promise<void> => {
     await addDoc(collection(db, 'announcements'), {
         title,
@@ -275,6 +314,14 @@ export const markAnnouncementsAsRead = async (userId: string, announcementIds: s
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, {
         readAnnouncements: arrayUnion(...announcementIds)
+    });
+};
+
+export const markNotificationsAsRead = async (userId: string, notificationIds: string[]): Promise<void> => {
+    if (notificationIds.length === 0) return;
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+        readNotifications: arrayUnion(...notificationIds)
     });
 };
 
@@ -320,18 +367,25 @@ export const approvePost = async (postId: string, approved: boolean): Promise<vo
 
 export const deletePost = async (post: Post): Promise<void> => {
     const postRef = doc(db, 'posts', post.id);
-    await deleteDoc(postRef);
-
-    // Note: The logic to update the author's stats (submissionsCount, likes, etc.) has been removed
-    // to prevent permission errors where an admin cannot update another user's profile.
-    // This functionality should ideally be handled by a backend Cloud Function that triggers on post deletion.
-    
-    // The user's submissionsCount will still be updated when a post is created, so this will become inaccurate
-    // over time without a backend function. For now, we prioritize the ability for admins to delete posts.
     const userRef = doc(db, 'users', post.authorId);
-    await updateDoc(userRef, {
-        submissionsCount: increment(-1)
+
+    const batch = writeBatch(db);
+    batch.delete(postRef);
+
+    // Decrement user stats. This is important for leaderboard accuracy.
+    // This requires the admin to have write permissions on user docs.
+    const likesCount = post.likes?.length || 0;
+    const suggestionsCount = post.suggestions?.length || 0;
+    const scoreToRemove = likesCount + (suggestionsCount * 5);
+
+    batch.update(userRef, {
+        submissionsCount: increment(-1),
+        totalLikes: increment(-likesCount),
+        totalSuggestions: increment(-suggestionsCount),
+        leaderboardScore: increment(-scoreToRemove)
     });
+
+    await batch.commit();
 }
 
 export const resetLeaderboard = async (): Promise<void> => {
@@ -378,8 +432,7 @@ export const resetLeaderboard = async (): Promise<void> => {
 
 // Promotion Requests
 export const createPromotionRequest = async (user: UserProfile, requestedRole: UserRole): Promise<void> => {
-    const requestRef = doc(collection(db, 'promotionRequests'));
-    await setDoc(requestRef, {
+    await addDoc(collection(db, 'promotionRequests'), {
         userId: user.uid,
         userName: user.name,
         userBatch: user.batch,
@@ -422,9 +475,12 @@ export const approvePromotionRequest = async (requestId: string, userId: string,
     const userRef = doc(db, 'users', userId);
     batch.update(userRef, { role: newRole });
     await batch.commit();
+
+    await createNotification(userId, "Promotion Approved!", `Congratulations, your role has been updated to ${newRole}.`, `/user/${userId}`);
 };
 
-export const rejectPromotionRequest = async (requestId: string): Promise<void> => {
+export const rejectPromotionRequest = async (requestId: string, userId: string): Promise<void> => {
     const requestRef = doc(db, 'promotionRequests', requestId);
     await updateDoc(requestRef, { status: 'rejected' });
+    await createNotification(userId, "Promotion Request Update", "Your recent promotion request was not approved at this time.", `/user/${userId}`);
 };

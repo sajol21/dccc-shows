@@ -15,6 +15,7 @@ export interface UserProfile {
   leaderboardScore: number;
   createdAt: Timestamp;
   readAnnouncements: string[];
+  readNotifications: string[];
 }
 
 export interface Post {
@@ -84,5 +85,15 @@ export interface Announcement {
     id:string;
     title: string;
     body: string;
+    createdAt: Timestamp;
+}
+
+export interface Notification {
+    id: string;
+    userId: string;
+    title: string;
+    body: string;
+    link?: string;
+    read: boolean;
     createdAt: Timestamp;
 }

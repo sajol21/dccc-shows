@@ -188,7 +188,7 @@ const PromotionRequestTab: React.FC<{ requests: PromotionRequest[], onUpdate: ()
         onUpdate();
     }
     const handleReject = async (req: PromotionRequest) => {
-        await rejectPromotionRequest(req.id);
+        await rejectPromotionRequest(req.id, req.userId);
         onUpdate();
     }
     if (requests.length === 0) {
