@@ -66,7 +66,7 @@ const ShowsPage: React.FC = () => {
   };
 
   const ErrorDisplay = ({ message }: { message: string }) => (
-    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl my-8" role="alert">
+    <div className="bg-red-900/50 border border-red-400 text-red-300 px-4 py-3 rounded-xl my-8" role="alert">
       <strong className="font-bold">Oops! </strong>
       <span className="block sm:inline">{message}</span>
     </div>
@@ -88,7 +88,7 @@ const ShowsPage: React.FC = () => {
               Submit Your Show
             </button>
           ) : (
-            <p className="text-sm text-center md:text-right text-gray-500 bg-white/50 backdrop-blur-lg border border-gray-200 px-4 py-2 rounded-lg">
+            <p className="text-sm text-center md:text-right text-gray-400 bg-gray-800/70 backdrop-blur-lg border border-gray-700 px-4 py-2 rounded-lg">
               Your time to shine is coming! Only {siteConfig.minRoleToPost}s and above can post.
             </p>
           )
@@ -96,9 +96,9 @@ const ShowsPage: React.FC = () => {
       </div>
       
       {!userProfile && (
-        <div className="bg-white/70 backdrop-blur-lg rounded-xl p-8 text-center shadow-lg border border-gray-200 mb-8">
+        <div className="bg-gray-800/70 backdrop-blur-lg rounded-xl p-8 text-center shadow-lg border border-gray-700 mb-8">
             <h2 className="text-2xl font-bold mb-2">The Audience Awaits</h2>
-            <p className="text-gray-600 mb-4">Sign in or create an account to share your masterpiece and join the conversation.</p>
+            <p className="text-gray-400 mb-4">Sign in or create an account to share your masterpiece and join the conversation.</p>
             <Link to="/login" className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-md transition-all duration-300 transform hover:scale-105">
                 Take the Stage
             </Link>
@@ -114,16 +114,16 @@ const ShowsPage: React.FC = () => {
           </section>
       )}
 
-      <div className="bg-white/70 backdrop-blur-lg p-4 rounded-lg shadow-md mb-8 grid grid-cols-1 md:grid-cols-3 gap-4 border border-gray-200">
-          <select name="province" value={filters.province} onChange={handleFilterChange} className="w-full p-2 border rounded-md bg-gray-50/50 border-gray-300">
+      <div className="bg-gray-800/70 backdrop-blur-lg p-4 rounded-lg shadow-md mb-8 grid grid-cols-1 md:grid-cols-3 gap-4 border border-gray-700">
+          <select name="province" value={filters.province} onChange={handleFilterChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-gray-200">
               <option value="">All Provinces</option>
               {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
-          <select name="role" value={filters.role} onChange={handleFilterChange} className="w-full p-2 border rounded-md bg-gray-50/50 border-gray-300">
+          <select name="role" value={filters.role} onChange={handleFilterChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-gray-200">
               <option value="">All Roles</option>
               {USER_ROLES.filter(r => LEADERBOARD_ROLES.includes(r)).map(r => <option key={r} value={r}>{r}</option>)}
           </select>
-          <input type="text" name="batch" placeholder="Filter by Batch (e.g., 27)" value={filters.batch} onChange={handleFilterChange} className="w-full p-2 border rounded-md bg-gray-50/50 border-gray-300" />
+          <input type="text" name="batch" placeholder="Filter by Batch (e.g., 27)" value={filters.batch} onChange={handleFilterChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-gray-200" />
       </div>
       
       {loading && posts.length === 0 ? (
@@ -140,14 +140,14 @@ const ShowsPage: React.FC = () => {
 
           {!loading && hasMore && (
               <div className="text-center mt-8">
-                  <button onClick={() => fetchPosts()} className="px-6 py-3 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-lg hover:bg-white">
+                  <button onClick={() => fetchPosts()} className="px-6 py-3 bg-gray-700 text-white backdrop-blur-sm border border-gray-600 rounded-lg hover:bg-gray-600">
                       Encore! (Load More)
                   </button>
               </div>
           )}
         </>
       ) : (
-        <p className="text-center text-gray-500 mt-12">The stage is empty... be the first to shine!</p>
+        <p className="text-center text-gray-400 mt-12">The stage is empty... be the first to shine!</p>
       )}
       
       <Modal isOpen={isCreatePostModalOpen} onClose={() => setCreatePostModalOpen(false)} title="Create New Show">
@@ -198,6 +198,8 @@ const CreatePostForm: React.FC<{onSuccess: () => void}> = ({onSuccess}) => {
                 authorName: userProfile.name,
                 authorBatch: userProfile.batch,
                 authorRole: userProfile.role,
+                // fix: Add 'approved' property to satisfy the Post type. New posts are pending approval.
+                approved: false,
             });
             alert("Show submitted for approval! The curators are on it.");
             onSuccess();
@@ -210,20 +212,20 @@ const CreatePostForm: React.FC<{onSuccess: () => void}> = ({onSuccess}) => {
     };
     
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-             {error && <p className="text-red-500 bg-red-100 p-2 rounded">{error}</p>}
-            <input type="text" placeholder="Title of your masterpiece" value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 border rounded-md bg-gray-50"/>
-            <textarea placeholder="Tell us the story behind it..." value={description} onChange={e => setDescription(e.target.value)} rows={4} className="w-full p-2 border rounded-md bg-gray-50"/>
-            <select value={province} onChange={e => setProvince(e.target.value as Province)} className="w-full p-2 border rounded-md bg-gray-50">
+        <form onSubmit={handleSubmit} className="space-y-4 text-gray-200">
+             {error && <p className="text-red-500 bg-red-900/50 p-2 rounded">{error}</p>}
+            <input type="text" placeholder="Title of your masterpiece" value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+            <textarea placeholder="Tell us the story behind it..." value={description} onChange={e => setDescription(e.target.value)} rows={4} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+            <select value={province} onChange={e => setProvince(e.target.value as Province)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
                 {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
-            <select value={type} onChange={e => setType(e.target.value as any)} className="w-full p-2 border rounded-md bg-gray-50">
+            <select value={type} onChange={e => setType(e.target.value as any)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
                 <option value="Text">Text Only</option>
                 <option value="Image">Image Link</option>
                 <option value="Video">Video Link</option>
             </select>
-            {(type === 'Image') && <input type="text" placeholder="Image URL (e.g., from Imgur, Cloudinary)" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} className="w-full p-2 border rounded-md bg-gray-50"/>}
-            {(type === 'Video') && <input type="text" placeholder="YouTube/Vimeo URL" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} className="w-full p-2 border rounded-md bg-gray-50"/>}
+            {(type === 'Image') && <input type="text" placeholder="Image URL (e.g., from Imgur, Cloudinary)" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>}
+            {(type === 'Video') && <input type="text" placeholder="YouTube/Vimeo URL" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>}
             <button type="submit" disabled={submitting} className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400">
                 {submitting ? 'Submitting...' : 'Submit Show'}
             </button>

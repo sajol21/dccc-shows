@@ -7,8 +7,8 @@ import { useAuth } from '../hooks/useAuth';
 import Spinner from '../components/Spinner';
 import Modal from '../components/Modal';
 import RoleBadge from '../components/RoleBadge';
-import { rtdb } from '../config/firebase';
-import { ref, onValue, off } from 'firebase/database';
+import { db } from '../config/firebase';
+import { collection, doc, onSnapshot, Timestamp } from 'firebase/firestore';
 
 const getEmbedUrl = (url: string | undefined): string => {
     if (!url) return '';
@@ -37,64 +37,76 @@ const PostDetailPage: React.FC = () => {
     const { currentUser, userProfile } = useAuth();
     const navigate = useNavigate();
     const [post, setPost] = useState<Post | null>(null);
-    const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
     const [newSuggestion, setNewSuggestion] = useState('');
     const [suggestionStatus, setSuggestionStatus] = useState('');
     const [loading, setLoading] = useState(true);
     const [isLiked, setIsLiked] = useState(false);
     const [isEditModalOpen, setEditModalOpen] = useState(false);
 
-    const fetchPostData = async () => {
-        if (!id) return;
-        const postData = await getPost(id);
-        setPost(postData);
-        if (postData && currentUser) {
-            setIsLiked(postData.likes.includes(currentUser.uid));
-        }
-    };
-
     useEffect(() => {
         if (!id) return;
         setLoading(true);
-        fetchPostData().finally(() => setLoading(false));
-        
-        const suggestionsRef = ref(rtdb, `suggestions/${id}`);
-        const listener = onValue(suggestionsRef, (snapshot) => {
-            const data = snapshot.val();
-            const suggestionsList = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })).sort((a, b) => b.timestamp - a.timestamp) : [];
-            setSuggestions(suggestionsList);
+
+        const postRef = doc(db, 'posts', id);
+        const unsubscribe = onSnapshot(postRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const postData = { id: docSnap.id, ...docSnap.data() } as Post;
+                setPost(postData);
+                if (currentUser) {
+                    setIsLiked((postData.likes || []).includes(currentUser.uid));
+                }
+            } else {
+                setPost(null);
+            }
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching post:", error);
+            setLoading(false);
         });
 
-        return () => off(suggestionsRef, 'value', listener);
-
+        return () => unsubscribe();
     }, [id, currentUser]);
+
 
     const handleSuggestionSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!id || !userProfile || !post || !newSuggestion.trim()) return;
         setSuggestionStatus('Submitting...');
         try {
-            await addSuggestion({
-                postId: id,
-                commenterId: userProfile.uid,
-                commenterName: userProfile.name,
-                commenterBatch: userProfile.batch,
-                text: newSuggestion,
-            }, post);
+            await addSuggestion(
+                id,
+                {
+                    id: doc(collection(db, 'posts')).id, // Firestore-like unique ID
+                    commenterId: userProfile.uid,
+                    commenterName: userProfile.name,
+                    commenterBatch: userProfile.batch,
+                    text: newSuggestion,
+                },
+                post
+            );
             setNewSuggestion('');
             setSuggestionStatus('Suggestion posted!');
             setTimeout(() => setSuggestionStatus(''), 3000);
         } catch (error) {
             console.error("Failed to post suggestion:", error);
-            setSuggestionStatus('Failed to post. Please try again.');
+            setSuggestionStatus('Failed to post. Please check permissions and try again.');
         }
     };
 
     const handleLike = async () => {
-        if (!id || !currentUser) return;
+        if (!id || !currentUser || !post) return;
+        // Optimistic update for UI responsiveness
+        const newLikedStatus = !isLiked;
+        const currentLikes = post.likes || [];
+        const newLikes = newLikedStatus 
+            ? [...currentLikes, currentUser.uid]
+            : currentLikes.filter(uid => uid !== currentUser.uid);
+
+        setPost(prev => prev ? {...prev, likes: newLikes} : null);
+        setIsLiked(newLikedStatus);
+        
+        // Call firebase service
         await toggleLikePost(id, currentUser.uid);
-        setIsLiked(!isLiked);
-        setPost(prev => prev ? {...prev, likes: isLiked ? prev.likes.filter(uid => uid !== currentUser.uid) : [...prev.likes, currentUser.uid]} : null);
     };
 
     const handleDelete = async () => {
@@ -111,6 +123,14 @@ const PostDetailPage: React.FC = () => {
         }
     };
 
+    const suggestionTimestampToDateString = (timestamp: Timestamp | { toDate: () => Date }): string => {
+        if (timestamp && typeof timestamp.toDate === 'function') {
+            return timestamp.toDate().toLocaleString();
+        }
+        return 'Just now'; // Fallback for optimistic updates
+    };
+
+
     if (loading) return <Spinner />;
     if (!post) return <p>This show does not exist or has been removed.</p>;
     
@@ -119,11 +139,12 @@ const PostDetailPage: React.FC = () => {
     
     const postDate = post.timestamp?.toDate();
     const formattedDate = postDate ? postDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
-    const formattedTime = postDate ? postDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : 'N/A';
+    
+    const suggestions = post.suggestions?.sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime()) || [];
 
     return (
       <>
-        <div className="bg-white/70 backdrop-blur-lg rounded-xl border border-white/20 shadow-xl overflow-hidden">
+        <div className="bg-gray-900/80 backdrop-blur-lg rounded-xl border border-gray-700 shadow-xl overflow-hidden">
             {post.mediaURL && post.type === 'Image' && <img src={post.mediaURL} alt={post.title} className="w-full h-64 md:h-96 object-cover"/>}
             {post.mediaURL && post.type === 'Video' && (
                 <div className="aspect-w-16 aspect-h-9 bg-black">
@@ -131,9 +152,9 @@ const PostDetailPage: React.FC = () => {
                 </div>
             )}
             
-            <div className="p-6 md:p-10">
+            <div className="p-6 md:p-10 text-gray-200">
                 <header className="mb-6 flex flex-col sm:flex-row justify-between items-start gap-4">
-                    <h1 className="text-3xl md:text-4xl font-bold text-gray-900">{post.title}</h1>
+                    <h1 className="text-3xl md:text-4xl font-bold text-white">{post.title}</h1>
                     <div className="flex-shrink-0 flex gap-2">
                         {(isOwner || isAdmin) && (
                             <button onClick={handleDelete} className="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-md hover:bg-red-700">DELETE</button>
@@ -144,51 +165,50 @@ const PostDetailPage: React.FC = () => {
                     </div>
                 </header>
 
-                <div className="bg-black/5 p-6 rounded-lg mb-6 border border-black/10">
-                    <article className="prose max-w-none text-lg text-gray-800">
+                <div className="bg-black/20 p-6 rounded-lg mb-6 border border-gray-700">
+                    <article className="prose prose-invert max-w-none text-lg text-gray-300">
                         <p>{post.description}</p>
                     </article>
                 </div>
                 
-                <div className="text-sm text-gray-600 space-y-2 mb-6">
+                <div className="text-sm text-gray-400 space-y-2 mb-6">
                     <div className="flex items-center gap-2">
-                        <Link to={`/user/${post.authorId}`} className="font-semibold hover:underline text-gray-800">{post.authorName}</Link>
+                        <Link to={`/user/${post.authorId}`} className="font-semibold hover:underline text-gray-200">{post.authorName}</Link>
                         <RoleBadge role={post.authorRole} />
                     </div>
                     <p><strong>Batch:</strong> HSC - {post.authorBatch}</p>
                     <p><strong>Date:</strong> {formattedDate}</p>
-                    <p><strong>Time:</strong> {formattedTime}</p>
                 </div>
 
 
-                <div className="flex items-center space-x-6 py-4 border-t border-b border-gray-200">
-                    <button onClick={handleLike} className={`flex items-center space-x-2 text-lg font-semibold transition-colors ${isLiked ? 'text-red-500' : 'text-gray-600 hover:text-red-400'}`}>
+                <div className="flex items-center space-x-6 py-4 border-t border-b border-gray-700">
+                    <button onClick={handleLike} className={`flex items-center space-x-2 text-lg font-semibold transition-colors ${isLiked ? 'text-red-500' : 'text-gray-400 hover:text-red-400'}`}>
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" /></svg>
-                        <span>{post.likes.length} Likes</span>
+                        <span>{(post.likes || []).length} Likes</span>
                     </button>
-                    <div className="flex items-center space-x-2 text-lg text-gray-600">
+                    <div className="flex items-center space-x-2 text-lg text-gray-400">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm2 1v8h12V6H4zm3 3h6v2H7V9z" /></svg>
                         <span>{suggestions.length} Suggestions</span>
                     </div>
                 </div>
 
                 <section className="mt-8">
-                    <h2 className="text-2xl font-bold mb-4">Leave Your Mark</h2>
+                    <h2 className="text-2xl font-bold mb-4 text-white">Leave Your Mark</h2>
                     {currentUser ? (
                         <form onSubmit={handleSuggestionSubmit} className="mb-6">
-                            <textarea value={newSuggestion} onChange={e => setNewSuggestion(e.target.value)} placeholder="Share your wisdom..." rows={3} className="w-full p-2 border rounded-md bg-white/50 border-gray-300 backdrop-blur-sm" />
+                            <textarea value={newSuggestion} onChange={e => setNewSuggestion(e.target.value)} placeholder="Share your wisdom..." rows={3} className="w-full p-2 border rounded-md bg-gray-800 border-gray-600 text-gray-200" />
                             <div className="flex items-center gap-4 mt-2">
                                 <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Submit</button>
-                                {suggestionStatus && <p className="text-sm text-gray-500">{suggestionStatus}</p>}
+                                {suggestionStatus && <p className="text-sm text-gray-400">{suggestionStatus}</p>}
                             </div>
                         </form>
-                    ) : <p>The audience awaits your feedback! <Link to="/login" className="text-blue-600 hover:underline">Log in</Link> to leave a suggestion.</p>}
+                    ) : <p>The audience awaits your feedback! <Link to="/login" className="text-blue-400 hover:underline">Log in</Link> to leave a suggestion.</p>}
                     <div className="space-y-4">
                         {suggestions.map(sugg => (
-                            <div key={sugg.id} className="bg-black/5 p-4 rounded-lg">
-                                <p className="mb-2">{sugg.text}</p>
+                            <div key={sugg.id} className="bg-black/20 p-4 rounded-lg border border-gray-700">
+                                <p className="mb-2 text-gray-300">{sugg.text}</p>
                                 <div className="text-xs text-gray-500">
-                                    <span>{sugg.commenterName} (Batch {sugg.commenterBatch})</span> - <span>{new Date(sugg.timestamp as number).toLocaleString()}</span>
+                                    <span>{sugg.commenterName} (Batch {sugg.commenterBatch})</span> - <span>{suggestionTimestampToDateString(sugg.timestamp)}</span>
                                 </div>
                             </div>
                         ))}
@@ -197,7 +217,7 @@ const PostDetailPage: React.FC = () => {
             </div>
         </div>
         <Modal isOpen={isEditModalOpen} onClose={() => setEditModalOpen(false)} title="Edit Post">
-            <EditPostForm post={post} onSuccess={() => { setEditModalOpen(false); fetchPostData(); }} />
+            <EditPostForm post={post} onSuccess={() => { setEditModalOpen(false); }} />
         </Modal>
       </>
     );
@@ -228,18 +248,18 @@ const EditPostForm: React.FC<{ post: Post, onSuccess: () => void }> = ({ post, o
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 text-gray-200">
             <div>
                 <label>Title</label>
-                <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50" />
+                <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white" />
             </div>
             <div>
                 <label>Description</label>
-                <textarea name="description" value={formData.description} onChange={handleChange} rows={5} className="w-full p-2 border rounded-md bg-gray-50" />
+                <textarea name="description" value={formData.description} onChange={handleChange} rows={5} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white" />
             </div>
             <div>
                 <label>Province</label>
-                <select name="province" value={formData.province} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-50">
+                <select name="province" value={formData.province} onChange={handleChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
                     {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
             </div>

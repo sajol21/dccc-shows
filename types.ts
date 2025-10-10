@@ -31,25 +31,27 @@ export interface Post {
   approved: boolean;
   timestamp: Timestamp;
   likes: string[]; // Array of user UIDs who liked
-  suggestionsCount: number;
+  suggestions: Suggestion[];
 }
 
 export interface Suggestion {
   id: string;
-  postId: string;
   commenterId: string;
   commenterName: string;
   commenterBatch: string;
   text: string;
-  timestamp: Timestamp | number;
+  timestamp: Timestamp;
 }
 
-export interface ContactMessage {
+export interface PromotionRequest {
   id: string;
-  name: string;
-  email: string;
-  message: string;
-  timestamp: Timestamp;
+  userId: string;
+  userName: string;
+  userBatch: string;
+  currentRole: UserRole;
+  requestedRole: UserRole;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: Timestamp;
 }
 
 export interface ArchivedUser {
@@ -80,7 +82,7 @@ export interface SiteConfig {
 }
 
 export interface Announcement {
-    id: string;
+    id:string;
     title: string;
     body: string;
     createdAt: Timestamp;

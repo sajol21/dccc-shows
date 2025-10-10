@@ -18,11 +18,12 @@ const Header: React.FC = () => {
       const fetchAnnouncements = async () => {
         const allAnnouncements = await getAnnouncements();
         setAnnouncements(allAnnouncements);
-        const newUnreadCount = allAnnouncements.filter(a => !userProfile.readAnnouncements.includes(a.id)).length;
+        const read = userProfile.readAnnouncements || [];
+        const newUnreadCount = allAnnouncements.filter(a => !read.includes(a.id)).length;
         setUnreadCount(newUnreadCount);
 
         if (newUnreadCount > 0 && Notification.permission === 'granted') {
-           const latestUnread = allAnnouncements.filter(a => !userProfile.readAnnouncements.includes(a.id))[0];
+           const latestUnread = allAnnouncements.filter(a => !read.includes(a.id))[0];
            new Notification(latestUnread.title, { body: latestUnread.body, icon: '/vite.svg' });
         }
       };
@@ -52,7 +53,8 @@ const Header: React.FC = () => {
   const handleAnnouncementsOpen = async () => {
       setAnnouncementsOpen(true);
       if (userProfile && unreadCount > 0) {
-          const unreadIds = announcements.filter(a => !userProfile.readAnnouncements.includes(a.id)).map(a => a.id);
+          const read = userProfile.readAnnouncements || [];
+          const unreadIds = announcements.filter(a => !read.includes(a.id)).map(a => a.id);
           await markAnnouncementsAsRead(userProfile.uid, unreadIds);
           setUnreadCount(0);
       }

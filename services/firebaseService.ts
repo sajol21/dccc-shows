@@ -2,11 +2,10 @@ import {
   doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion
 } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
-import { db, storage, auth, rtdb } from '../config/firebase';
-import { UserProfile, Post, Suggestion, ContactMessage, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement } from '../types';
+import { db, storage, auth } from '../config/firebase';
+import { UserProfile, Post, Suggestion, PromotionRequest, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement } from '../types';
 import { UserRole, Province, LEADERBOARD_ROLES } from '../constants';
 import { signOut, GoogleAuthProvider, signInWithPopup, sendEmailVerification } from 'firebase/auth';
-import { ref as rtdbRef, push, serverTimestamp as rtdbServerTimestamp, remove as rtdbRemove } from 'firebase/database';
 
 // User Management
 export const createUserProfile = async (uid: string, name: string, email: string, phone: string = '', batch: string = ''): Promise<void> => {
@@ -68,19 +67,24 @@ export const logout = async (): Promise<void> => {
 
 
 // Post Management
-export const createPost = async (postData: Omit<Post, 'id' | 'timestamp' | 'likes' | 'suggestionsCount' | 'approved'>): Promise<void> => {
-  await addDoc(collection(db, 'posts'), {
+export const createPost = async (postData: Omit<Post, 'id' | 'timestamp' | 'likes' | 'suggestions'>): Promise<void> => {
+  const batch = writeBatch(db);
+  
+  const newPostRef = doc(collection(db, 'posts'));
+  batch.set(newPostRef, {
     ...postData,
     timestamp: serverTimestamp(),
     likes: [],
-    suggestionsCount: 0,
+    suggestions: [],
     approved: false,
   });
-  
+
   const userRef = doc(db, 'users', postData.authorId);
-  await updateDoc(userRef, {
+  batch.update(userRef, {
     submissionsCount: increment(1)
   });
+  
+  await batch.commit();
 };
 
 export const updatePost = async (postId: string, data: Partial<Post>): Promise<void> => {
@@ -168,16 +172,19 @@ export const toggleLikePost = async (postId: string, userId: string): Promise<vo
     
     const batch = writeBatch(db);
     const isLeaderboardAuthor = LEADERBOARD_ROLES.includes(post.authorRole);
+    const currentLikes = post.likes || []; // Defensive check
 
-    if (post.likes.includes(userId)) {
-        batch.update(postRef, { likes: post.likes.filter(id => id !== userId) });
+    if (currentLikes.includes(userId)) {
+        // Unlike
+        batch.update(postRef, { likes: currentLikes.filter(id => id !== userId) });
         const updates: any = { totalLikes: increment(-1) };
         if (isLeaderboardAuthor) {
             updates.leaderboardScore = increment(-1);
         }
         batch.update(authorRef, updates);
     } else {
-        batch.update(postRef, { likes: [...post.likes, userId] });
+        // Like
+        batch.update(postRef, { likes: [...currentLikes, userId] });
         const updates: any = { totalLikes: increment(1) };
         if (isLeaderboardAuthor) {
             updates.leaderboardScore = increment(1);
@@ -189,52 +196,25 @@ export const toggleLikePost = async (postId: string, userId: string): Promise<vo
 
 
 // Suggestion Management
-export const addSuggestion = async (suggestionData: Omit<Suggestion, 'id' | 'timestamp'>, post: Post): Promise<void> => {
-  const suggestionsRef = rtdbRef(rtdb, `suggestions/${suggestionData.postId}`);
-  await push(suggestionsRef, {
-    ...suggestionData,
-    timestamp: rtdbServerTimestamp(),
-  });
-  
-  const batch = writeBatch(db);
-  
-  const postRef = doc(db, 'posts', suggestionData.postId);
-  batch.update(postRef, {
-    suggestionsCount: increment(1)
-  });
-  
-  const authorRef = doc(db, 'users', post.authorId);
-  const isLeaderboardAuthor = LEADERBOARD_ROLES.includes(post.authorRole);
-  const updates: any = { totalSuggestions: increment(1) };
-  if(isLeaderboardAuthor) {
-      updates.leaderboardScore = increment(1);
-  }
-  batch.update(authorRef, updates);
-  
-  await batch.commit();
-};
+export const addSuggestion = async (postId: string, suggestionData: Omit<Suggestion, 'timestamp'>, post: Post): Promise<void> => {
+    const postRef = doc(db, 'posts', postId);
 
-export const deleteSuggestion = async (postId: string, suggestionId: string): Promise<void> => {
-    const post = await getPost(postId);
-    if (!post) {
-        console.error("Post not found, cannot delete suggestion or update stats.");
-        return;
-    }
-    const suggestionRef = rtdbRef(rtdb, `suggestions/${postId}/${suggestionId}`);
-    await rtdbRemove(suggestionRef);
+    const newSuggestion = {
+      ...suggestionData,
+      timestamp: serverTimestamp()
+    };
     
     const batch = writeBatch(db);
-
-    const postRef = doc(db, 'posts', postId);
+    
     batch.update(postRef, {
-        suggestionsCount: increment(-1)
+      suggestions: arrayUnion(newSuggestion)
     });
-
+    
     const authorRef = doc(db, 'users', post.authorId);
     const isLeaderboardAuthor = LEADERBOARD_ROLES.includes(post.authorRole);
-    const updates: any = { totalSuggestions: increment(-1) };
-    if (isLeaderboardAuthor) {
-        updates.leaderboardScore = increment(-1);
+    const updates: any = { totalSuggestions: increment(1) };
+    if(isLeaderboardAuthor) {
+        updates.leaderboardScore = increment(1);
     }
     batch.update(authorRef, updates);
     
@@ -362,9 +342,6 @@ export const deletePost = async (post: Post): Promise<void> => {
         // If we were, we would need to check if the URL is from Firebase Storage.
     }
     
-    const suggestionsRef = rtdbRef(rtdb, `suggestions/${post.id}`);
-    await rtdbRemove(suggestionsRef);
-    
     const batch = writeBatch(db);
     
     const postRef = doc(db, 'posts', post.id);
@@ -374,7 +351,7 @@ export const deletePost = async (post: Post): Promise<void> => {
     
     // Defensive check for missing properties on older documents
     const likesCount = post.likes?.length || 0;
-    const suggestionsCount = post.suggestionsCount || 0;
+    const suggestionsCount = post.suggestions?.length || 0;
 
     batch.update(userRef, {
         submissionsCount: increment(-1),
@@ -385,17 +362,6 @@ export const deletePost = async (post: Post): Promise<void> => {
     
     await batch.commit();
 }
-
-export const getContactMessages = async (): Promise<ContactMessage[]> => {
-    const q = query(collection(db, 'contacts'), orderBy('timestamp', 'desc'));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ContactMessage));
-};
-
-export const deleteContactMessage = async (id: string): Promise<void> => {
-    const messageRef = doc(db, 'contacts', id);
-    await deleteDoc(messageRef);
-};
 
 export const resetLeaderboard = async (): Promise<void> => {
     // 1. Get current top users to archive them
@@ -438,3 +404,56 @@ export const resetLeaderboard = async (): Promise<void> => {
     });
     await batch.commit();
 }
+
+// Promotion Requests
+export const createPromotionRequest = async (user: UserProfile, requestedRole: UserRole): Promise<void> => {
+    const requestRef = doc(collection(db, 'promotionRequests'));
+    await setDoc(requestRef, {
+        userId: user.uid,
+        userName: user.name,
+        userBatch: user.batch,
+        currentRole: user.role,
+        requestedRole: requestedRole,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+    });
+};
+
+export const getUsersPendingRequest = async (userId: string): Promise<PromotionRequest | null> => {
+    const q = query(
+        collection(db, 'promotionRequests'),
+        where('userId', '==', userId),
+        where('status', '==', 'pending'),
+        limit(1)
+    );
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        return { id: doc.id, ...doc.data() } as PromotionRequest;
+    }
+    return null;
+};
+
+export const getPendingPromotionRequests = async (): Promise<PromotionRequest[]> => {
+    const q = query(
+        collection(db, 'promotionRequests'),
+        where('status', '==', 'pending'),
+        orderBy('createdAt', 'desc')
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PromotionRequest));
+};
+
+export const approvePromotionRequest = async (requestId: string, userId: string, newRole: UserRole): Promise<void> => {
+    const batch = writeBatch(db);
+    const requestRef = doc(db, 'promotionRequests', requestId);
+    batch.update(requestRef, { status: 'approved' });
+    const userRef = doc(db, 'users', userId);
+    batch.update(userRef, { role: newRole });
+    await batch.commit();
+};
+
+export const rejectPromotionRequest = async (requestId: string): Promise<void> => {
+    const requestRef = doc(db, 'promotionRequests', requestId);
+    await updateDoc(requestRef, { status: 'rejected' });
+};

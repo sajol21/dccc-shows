@@ -8,7 +8,7 @@ import RoleBadge from './RoleBadge';
 const PostCard: React.FC<{ post: Post }> = ({ post }) => {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
-    const isLiked = currentUser ? post.likes.includes(currentUser.uid) : false;
+    const isLiked = currentUser && post.likes ? post.likes.includes(currentUser.uid) : false;
 
     const handleLike = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -50,13 +50,13 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                             </svg>
-                            <span>{post.likes.length}</span>
+                            <span>{post.likes?.length || 0}</span>
                         </button>
                         <div className="flex items-center space-x-1 text-gray-400">
                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm2 1v8h12V6H4zm3 3h6v2H7V9z" />
                             </svg>
-                            <span>{post.suggestionsCount}</span>
+                            <span>{post.suggestions?.length || 0}</span>
                         </div>
                     </div>
                 </div>

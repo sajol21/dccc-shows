@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getUserProfile, updateUserProfile, getPostsByAuthor } from '../services/firebaseService';
+import { getUserProfile, updateUserProfile, getPostsByAuthor, createPromotionRequest, getUsersPendingRequest } from '../services/firebaseService';
 import { Province, PROVINCES, UserRole } from '../constants';
-import { UserProfile, Post } from '../types';
+import { UserProfile, Post, PromotionRequest } from '../types';
 import Spinner from '../components/Spinner';
 import PostCard from '../components/PostCard';
+
+const NEXT_ROLE_MAP: Partial<Record<UserRole, UserRole>> = {
+    [UserRole.GENERAL_STUDENT]: UserRole.GENERAL_MEMBER,
+    [UserRole.GENERAL_MEMBER]: UserRole.ASSOCIATE_MEMBER,
+};
 
 const UserProfilePage: React.FC = () => {
   const { uid } = useParams<{ uid: string }>();
@@ -20,6 +25,7 @@ const UserProfilePage: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<UserProfile>>({});
   const [status, setStatus] = useState('');
+  const [pendingRequest, setPendingRequest] = useState<PromotionRequest | null>(null);
   
   const isOwner = loggedInUserProfile?.uid === uid;
 
@@ -32,14 +38,16 @@ const UserProfilePage: React.FC = () => {
       setLoading(true);
       setError('');
       try {
-        const [profile, userPosts] = await Promise.all([
+        const [profile, userPosts, existingRequest] = await Promise.all([
           getUserProfile(uid),
-          getPostsByAuthor(uid)
+          getPostsByAuthor(uid),
+          isOwner ? getUsersPendingRequest(uid) : Promise.resolve(null),
         ]);
 
         if (profile) {
           setProfileData(profile);
           setPosts(userPosts);
+          setPendingRequest(existingRequest);
         } else {
           setError('User profile not found.');
         }
@@ -52,7 +60,7 @@ const UserProfilePage: React.FC = () => {
     };
 
     fetchData();
-  }, [uid, navigate]);
+  }, [uid, navigate, isOwner]);
   
   const handleEditToggle = () => {
     if (!isEditing && profileData) {
@@ -80,7 +88,6 @@ const UserProfilePage: React.FC = () => {
       await updateUserProfile(uid, formData);
       setStatus('Profile updated successfully!');
       setIsEditing(false);
-      // Refetch data to show updated info
       const updatedProfile = await getUserProfile(uid);
       setProfileData(updatedProfile);
     } catch(error) {
@@ -88,10 +95,29 @@ const UserProfilePage: React.FC = () => {
         setStatus('Failed to update profile.');
     }
   };
+  
+  const handlePromotionRequest = async () => {
+    if (!profileData) return;
+    const requestedRole = NEXT_ROLE_MAP[profileData.role];
+    if (!requestedRole) return;
+
+    if (window.confirm(`Are you sure you want to request a promotion to ${requestedRole}?`)) {
+        try {
+            await createPromotionRequest(profileData, requestedRole);
+            setPendingRequest({} as PromotionRequest); // Mock object to disable button
+            alert('Your promotion request has been submitted for review.');
+        } catch (err) {
+            console.error(err);
+            alert('Failed to submit promotion request.');
+        }
+    }
+  };
 
   if (loading || authLoading) return <Spinner />;
   if (error) return <p className="text-center text-red-500">{error}</p>;
   if (!profileData) return <p>Could not load profile.</p>;
+  
+  const canRequestPromotion = isOwner && NEXT_ROLE_MAP[profileData.role] && !pendingRequest;
 
   return (
     <div className="space-y-12">
@@ -137,7 +163,7 @@ const UserProfilePage: React.FC = () => {
                   </div>
                   
                   {isOwner && (
-                    <div className="mt-6 flex flex-wrap gap-4">
+                    <div className="mt-6 flex flex-wrap gap-4 items-center">
                         <button type="button" onClick={handleEditToggle} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500 text-white">
                             {isEditing ? 'Cancel' : 'Edit Profile'}
                         </button>
@@ -145,6 +171,14 @@ const UserProfilePage: React.FC = () => {
                             <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
                                 Save Changes
                             </button>
+                        )}
+                        {canRequestPromotion && (
+                            <button type="button" onClick={handlePromotionRequest} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                                Request Promotion to {NEXT_ROLE_MAP[profileData.role]}
+                            </button>
+                        )}
+                         {isOwner && pendingRequest && (
+                            <p className="text-sm text-yellow-400">Your promotion request is pending review.</p>
                         )}
                     </div>
                   )}
