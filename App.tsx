@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext.js';
+import { AuthProvider } from './contexts/AuthContext.js';
 import Header from './components/Header.js';
 import Footer from './components/Footer.js';
 import HomePage from './pages/HomePage.js';
@@ -20,24 +20,8 @@ import VerifyEmailPage from './pages/VerifyEmailPage.js';
 import CreatePostPage from './pages/CreatePostPage.js';
 import SessionsPage from './pages/SessionsPage.js';
 import SessionDetailPage from './pages/SessionDetailPage.js';
-import { setupPushNotifications } from './services/firebaseService.js';
 
 const AppContent: React.FC = () => {
-  const { currentUser, loading } = useAuth();
-
-  // DEBUG: Log auth state on every render to see what's happening.
-  console.log('AppContent render:', { loading, currentUser });
-
-  useEffect(() => {
-    // When any user logs in, attempt to set up push notifications.
-    if (currentUser) {
-      console.log('useEffect triggered: currentUser found, calling setupPushNotifications.');
-      setupPushNotifications();
-    } else {
-      console.log('useEffect triggered: currentUser is null or undefined.');
-    }
-  }, [currentUser]);
-
   return (
     <div className="flex flex-col min-h-screen bg-black/60 text-gray-200">
       <Header />

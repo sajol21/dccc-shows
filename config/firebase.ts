@@ -3,7 +3,6 @@ import { getAuth } from "firebase/auth";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getDatabase } from "firebase/database";
-import { getMessaging } from "firebase/messaging";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -29,8 +28,6 @@ export const db = initializeFirestore(app, {
 export const storage = getStorage(app);
 export const rtdb = getDatabase(app);
 
-// Initialize Firebase Cloud Messaging and get a reference to the service
-export const messaging = getMessaging(app);
 
 // The old try-catch block for enableIndexedDbPersistence is no longer needed.
 // The initialization now handles setting up persistence directly.

@@ -2,11 +2,10 @@ import {
   doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion, arrayRemove, Timestamp, onSnapshot, Unsubscribe
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage, auth, messaging } from '../config/firebase.js';
+import { db, storage, auth } from '../config/firebase.js';
 import { UserProfile, Post, Suggestion, PromotionRequest, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement, Notification, Session } from '../types.js';
 import { UserRole, Province, LEADERBOARD_ROLES } from '../constants.js';
 import { signOut, GoogleAuthProvider, signInWithPopup, sendEmailVerification } from 'firebase/auth';
-import { getToken, onMessage } from 'firebase/messaging';
 
 // User Management
 export const createUserProfile = async (uid: string, name: string, email: string, phone: string = '', batch: string = ''): Promise<void> => {
@@ -66,80 +65,6 @@ export const updateUserProfile = async (uid: string, data: Partial<UserProfile>)
 export const logout = async (): Promise<void> => {
   await signOut(auth);
 };
-
-// Push Notification Management
-const saveFcmToken = async (uid: string, token: string): Promise<void> => {
-    const tokensRef = collection(db, 'fcmTokens');
-    // Check if the token already exists for this user to avoid duplicates
-    const q = query(tokensRef, where('uid', '==', uid), where('token', '==', token));
-    const querySnapshot = await getDocs(q);
-    
-    if (querySnapshot.empty) {
-        // Token doesn't exist for this user, so add it
-        await addDoc(tokensRef, {
-            uid,
-            token,
-            createdAt: serverTimestamp(),
-        });
-        console.log('FCM token saved for user:', uid);
-    } else {
-        console.log('FCM token already exists for this user.');
-    }
-};
-
-export const setupPushNotifications = async (): Promise<void> => {
-    console.log("Attempting to set up push notifications...");
-    const user = auth.currentUser;
-
-    if (!user) {
-        console.log("Push setup failed: User not logged in.");
-        return;
-    }
-    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.log("Push setup failed: Browser does not support push notifications.");
-        return;
-    }
-
-    try {
-        console.log("Registering service worker at /firebase-messaging-sw.js...");
-        const serviceWorkerRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        console.log("Service Worker registered successfully:", serviceWorkerRegistration);
-
-        console.log("Requesting notification permission...");
-        const permission = await Notification.requestPermission();
-        console.log("Notification permission status:", permission);
-
-        if (permission === 'granted') {
-            const vapidKey = 'BLTOXznAUb_pfx5ysd29tufXMIStZW5iexOpgyuet3GW6D6jseQ6Kvr49N8q8kCf1IsivSyC5BMtlZKiggVZ35M';
-            
-            console.log("Getting FCM token...");
-            const currentToken = await getToken(messaging, { vapidKey: vapidKey, serviceWorkerRegistration });
-
-            if (currentToken) {
-                console.log("FCM Token received:", currentToken);
-                await saveFcmToken(user.uid, currentToken);
-                
-                // Handle messages that arrive while the app is in the foreground
-                onMessage(messaging, (payload) => {
-                    console.log('Foreground message received.', payload);
-                    if (payload.notification) {
-                         new Notification(payload.notification.title || 'New Notification', {
-                            body: payload.notification.body,
-                            icon: payload.notification.icon || 'https://res.cloudinary.com/dabfeqgsj/image/upload/v1759778648/cyizstrjgcq0w9fr8cxp.png',
-                        });
-                    }
-                });
-            } else {
-                console.log('No registration token available. This can happen if the VAPID key is invalid or the service worker is not correctly configured.');
-            }
-        } else {
-            console.log('Unable to get permission to notify.');
-        }
-    } catch (error) {
-        console.error('An error occurred during push notification setup.', error);
-    }
-};
-
 
 // Post Management
 export const createPost = async (
