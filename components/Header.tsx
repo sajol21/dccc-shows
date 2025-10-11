@@ -49,18 +49,6 @@ const Header: React.FC = () => {
       }
   }, [userProfile, announcements, notifications]);
 
-  const requestNotificationPermission = async () => {
-      if ('Notification' in window && Notification.permission === 'default') {
-          await Notification.requestPermission();
-      }
-  };
-  
-  useEffect(() => {
-    if(currentUser) {
-        setTimeout(requestNotificationPermission, 5000);
-    }
-  }, [currentUser]);
-
   const handleLogout = async () => {
     setMobileMenuOpen(false);
     await logout();

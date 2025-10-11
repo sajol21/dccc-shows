@@ -2,10 +2,11 @@ import {
   doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion, arrayRemove, Timestamp, onSnapshot, Unsubscribe
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage, auth } from '../config/firebase.js';
+import { db, storage, auth, messaging } from '../config/firebase.js';
 import { UserProfile, Post, Suggestion, PromotionRequest, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement, Notification, Session } from '../types.js';
 import { UserRole, Province, LEADERBOARD_ROLES } from '../constants.js';
 import { signOut, GoogleAuthProvider, signInWithPopup, sendEmailVerification } from 'firebase/auth';
+import { getToken, onMessage } from 'firebase/messaging';
 
 // User Management
 export const createUserProfile = async (uid: string, name: string, email: string, phone: string = '', batch: string = ''): Promise<void> => {
@@ -64,6 +65,71 @@ export const updateUserProfile = async (uid: string, data: Partial<UserProfile>)
 
 export const logout = async (): Promise<void> => {
   await signOut(auth);
+};
+
+// Push Notification Management
+const saveFcmToken = async (uid: string, token: string): Promise<void> => {
+    const tokensRef = collection(db, 'fcmTokens');
+    // Check if the token already exists for this user to avoid duplicates
+    const q = query(tokensRef, where('uid', '==', uid), where('token', '==', token));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+        // Token doesn't exist for this user, so add it
+        await addDoc(tokensRef, {
+            uid,
+            token,
+            createdAt: serverTimestamp(),
+        });
+        console.log('FCM token saved for user:', uid);
+    } else {
+        console.log('FCM token already exists for this user.');
+    }
+};
+
+export const setupPushNotifications = async (): Promise<void> => {
+    const user = auth.currentUser;
+    if (!user || !('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.log("User not logged in or push notifications not supported by this browser.");
+        return;
+    }
+
+    try {
+        // Register the service worker
+        const serviceWorkerRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            console.log('Notification permission granted.');
+            
+            // IMPORTANT: Get this key from your Firebase project settings
+            // Go to Project settings > Cloud Messaging > Web configuration > Generate key pair
+            const vapidKey = 'BLTOXznAUb_pfx5ysd29tufXMIStZW5iexOpgyuet3GW6D6jseQ6Kvr49N8q8kCf1IsivSyC5BMtlZKiggVZ35M'; 
+            // fix: Removed obsolete VAPID key placeholder check as the key is already set.
+            // This resolved a TypeScript error about an impossible comparison.
+
+            const currentToken = await getToken(messaging, { vapidKey: vapidKey, serviceWorkerRegistration });
+            if (currentToken) {
+                await saveFcmToken(user.uid, currentToken);
+                // Handle messages that arrive while the app is in the foreground
+                onMessage(messaging, (payload) => {
+                    console.log('Foreground message received.', payload);
+                    if (payload.notification) {
+                         new Notification(payload.notification.title || 'New Notification', {
+                            body: payload.notification.body,
+                            icon: payload.notification.icon,
+                        });
+                    }
+                });
+            } else {
+                console.log('No registration token available. Request permission to generate one.');
+            }
+        } else {
+            console.log('Unable to get permission to notify.');
+        }
+    } catch (error) {
+        console.error('An error occurred while setting up push notifications.', error);
+    }
 };
 
 
