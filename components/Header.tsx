@@ -173,27 +173,35 @@ const Header: React.FC = () => {
                        {unreadCount > 0 && <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-gray-900"></span>}
                     </button>
                     {isNotificationsOpen && (
-                        <div className="absolute right-0 mt-2 w-screen max-w-sm bg-gray-800 rounded-lg shadow-xl border border-gray-600 overflow-hidden">
-                           <div className="max-h-[70vh] overflow-y-auto">
-                           {notifications.length > 0 && (
-                               <div>
-                                   <div className="p-3 font-bold text-center border-b border-gray-700 text-gray-200 bg-gray-900/50 sticky top-0">Personal</div>
-                                   {notifications.map(notif => (
-                                       <NotificationItem key={notif.id} item={notif} isPersonal={true} />
-                                   ))}
-                               </div>
-                           )}
-                           {announcements.length > 0 && (
-                               <div>
-                                   <div className="p-3 font-bold text-center border-b border-gray-700 text-gray-200 bg-gray-900/50 sticky top-0">Announcements</div>
-                                   {announcements.map(ann => (
-                                       <NotificationItem key={ann.id} item={ann} isPersonal={false} />
-                                   ))}
-                               </div>
-                           )}
-                           {notifications.length === 0 && announcements.length === 0 && <p className="p-4 text-center text-sm text-gray-500">The stage is quiet... for now.</p>}
-                           </div>
-                        </div>
+                        <>
+                          {/* Backdrop for mobile view */}
+                          <div 
+                              className="fixed inset-0 bg-black/50 z-40 sm:hidden"
+                              onClick={() => setNotificationsOpen(false)}
+                          ></div>
+                          {/* Notification Panel */}
+                          <div className="fixed top-16 left-1/2 -translate-x-1/2 w-[95vw] max-w-sm sm:absolute sm:left-auto sm:right-0 sm:translate-x-0 sm:top-auto sm:mt-2 sm:w-96 bg-gray-800 rounded-lg shadow-xl border border-gray-600 overflow-hidden z-50">
+                            <div className="max-h-[70vh] overflow-y-auto">
+                            {notifications.length > 0 && (
+                                <div>
+                                    <div className="p-3 font-bold text-center border-b border-gray-700 text-gray-200 bg-gray-900/50 sticky top-0">Personal</div>
+                                    {notifications.map(notif => (
+                                        <NotificationItem key={notif.id} item={notif} isPersonal={true} />
+                                    ))}
+                                </div>
+                            )}
+                            {announcements.length > 0 && (
+                                <div>
+                                    <div className="p-3 font-bold text-center border-b border-gray-700 text-gray-200 bg-gray-900/50 sticky top-0">Announcements</div>
+                                    {announcements.map(ann => (
+                                        <NotificationItem key={ann.id} item={ann} isPersonal={false} />
+                                    ))}
+                                </div>
+                            )}
+                            {notifications.length === 0 && announcements.length === 0 && <p className="p-4 text-center text-sm text-gray-500">The stage is quiet... for now.</p>}
+                            </div>
+                          </div>
+                        </>
                     )}
                 </div>
             )}
@@ -218,7 +226,16 @@ const Header: React.FC = () => {
       
       {/* Mobile Menu Overlay */}
       <div className={`fixed inset-0 z-[100] bg-gray-900/80 backdrop-blur-lg transition-opacity duration-300 ease-in-out ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => setMobileMenuOpen(false)}>
-        <div className={`fixed top-0 right-0 h-full w-full flex flex-col items-center justify-center transition-transform duration-500 ease-in-out transform ${isMobileMenuOpen ? 'translate-y-0' : '-translate-y-10'}`} onClick={(e) => e.stopPropagation()}>
+        <div className={`relative fixed top-0 right-0 h-full w-full flex flex-col items-center justify-center transition-transform duration-500 ease-in-out transform ${isMobileMenuOpen ? 'translate-y-0' : '-translate-y-10'}`} onClick={(e) => e.stopPropagation()}>
+            <button 
+                onClick={() => setMobileMenuOpen(false)} 
+                className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors"
+                aria-label="Close menu"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
             <nav className="flex flex-col items-center justify-center text-center gap-4">
                 <NavLink to="/" isMobile>Home</NavLink>
                 <NavLink to="/shows" isMobile>Shows</NavLink>
