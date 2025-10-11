@@ -23,12 +23,18 @@ import SessionDetailPage from './pages/SessionDetailPage.js';
 import { setupPushNotifications } from './services/firebaseService.js';
 
 const AppContent: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, loading } = useAuth();
+
+  // DEBUG: Log auth state on every render to see what's happening.
+  console.log('AppContent render:', { loading, currentUser });
 
   useEffect(() => {
-    // When a verified user logs in, set up push notifications.
-    if (currentUser && currentUser.emailVerified) {
+    // When any user logs in, attempt to set up push notifications.
+    if (currentUser) {
+      console.log('useEffect triggered: currentUser found, calling setupPushNotifications.');
       setupPushNotifications();
+    } else {
+      console.log('useEffect triggered: currentUser is null or undefined.');
     }
   }, [currentUser]);
 
