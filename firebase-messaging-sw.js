@@ -22,14 +22,59 @@ firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  console.log('[SW] Received background message ', payload);
+
+  if (!payload.notification) {
+    console.log("[SW] No notification payload in message, skipping display.");
+    return;
+  }
 
   // Customize the notification here
-  const notificationTitle = payload.notification.title;
+  const notificationTitle = payload.notification.title || 'New Message';
   const notificationOptions = {
-    body: payload.notification.body,
-    icon: payload.notification.icon || '/vite.svg'
+    body: payload.notification.body || 'You have a new message from DCCC.',
+    icon: 'https://res.cloudinary.com/dabfeqgsj/image/upload/v1759778648/cyizstrjgcq0w9fr8cxp.png',
+    data: {
+      url: payload.fcmOptions?.link || self.location.origin, // Use link from FCM or open the site root
+    }
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// This event is fired when the user clicks on a notification.
+self.addEventListener('notificationclick', (event) => {
+  const clickedNotification = event.notification;
+  clickedNotification.close();
+
+  // Get the URL from the notification data, default to the app's origin
+  const urlToOpen = clickedNotification.data.url || self.location.origin;
+
+  // Check if a window is already open with the same URL and focus it. Otherwise, open a new window.
+  const promiseChain = clients.matchAll({
+    type: 'window',
+    includeUncontrolled: true,
+  }).then((windowClients) => {
+    let matchingClient = null;
+
+    for (let i = 0; i < windowClients.length; i++) {
+      const windowClient = windowClients[i];
+      // Check if the client's URL matches the notification's URL
+      // A simple check is to see if the pathname matches
+      const clientUrl = new URL(windowClient.url);
+      const targetUrl = new URL(urlToOpen);
+      if (clientUrl.pathname === targetUrl.pathname) {
+        matchingClient = windowClient;
+        break;
+      }
+    }
+
+    if (matchingClient) {
+      return matchingClient.focus();
+    } else {
+      return clients.openWindow(urlToOpen);
+    }
+  });
+
+  event.waitUntil(promiseChain);
 });

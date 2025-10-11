@@ -88,47 +88,55 @@ const saveFcmToken = async (uid: string, token: string): Promise<void> => {
 };
 
 export const setupPushNotifications = async (): Promise<void> => {
+    console.log("Attempting to set up push notifications...");
     const user = auth.currentUser;
-    if (!user || !('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.log("User not logged in or push notifications not supported by this browser.");
+
+    if (!user) {
+        console.log("Push setup failed: User not logged in.");
+        return;
+    }
+    if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.log("Push setup failed: Browser does not support push notifications.");
         return;
     }
 
     try {
-        // Register the service worker
+        console.log("Registering service worker at /firebase-messaging-sw.js...");
         const serviceWorkerRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-        
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-            console.log('Notification permission granted.');
-            
-            // IMPORTANT: Get this key from your Firebase project settings
-            // Go to Project settings > Cloud Messaging > Web configuration > Generate key pair
-            const vapidKey = 'BLTOXznAUb_pfx5ysd29tufXMIStZW5iexOpgyuet3GW6D6jseQ6Kvr49N8q8kCf1IsivSyC5BMtlZKiggVZ35M'; 
-            // fix: Removed obsolete VAPID key placeholder check as the key is already set.
-            // This resolved a TypeScript error about an impossible comparison.
+        console.log("Service Worker registered successfully:", serviceWorkerRegistration);
 
+        console.log("Requesting notification permission...");
+        const permission = await Notification.requestPermission();
+        console.log("Notification permission status:", permission);
+
+        if (permission === 'granted') {
+            const vapidKey = 'BLTOXznAUb_pfx5ysd29tufXMIStZW5iexOpgyuet3GW6D6jseQ6Kvr49N8q8kCf1IsivSyC5BMtlZKiggVZ35M';
+            
+            console.log("Getting FCM token...");
             const currentToken = await getToken(messaging, { vapidKey: vapidKey, serviceWorkerRegistration });
+
             if (currentToken) {
+                console.log("FCM Token received:", currentToken);
                 await saveFcmToken(user.uid, currentToken);
+                
                 // Handle messages that arrive while the app is in the foreground
                 onMessage(messaging, (payload) => {
                     console.log('Foreground message received.', payload);
                     if (payload.notification) {
                          new Notification(payload.notification.title || 'New Notification', {
                             body: payload.notification.body,
-                            icon: payload.notification.icon,
+                            icon: payload.notification.icon || 'https://res.cloudinary.com/dabfeqgsj/image/upload/v1759778648/cyizstrjgcq0w9fr8cxp.png',
                         });
                     }
                 });
             } else {
-                console.log('No registration token available. Request permission to generate one.');
+                console.log('No registration token available. This can happen if the VAPID key is invalid or the service worker is not correctly configured.');
             }
         } else {
             console.log('Unable to get permission to notify.');
         }
     } catch (error) {
-        console.error('An error occurred while setting up push notifications.', error);
+        console.error('An error occurred during push notification setup.', error);
     }
 };
 
