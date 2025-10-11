@@ -1,6 +1,7 @@
 import { 
   doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion, arrayRemove, Timestamp, onSnapshot, Unsubscribe
 } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, auth } from '../config/firebase.js';
 import { UserProfile, Post, Suggestion, PromotionRequest, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement, Notification } from '../types.js';
 import { UserRole, Province, LEADERBOARD_ROLES } from '../constants.js';
@@ -67,24 +68,25 @@ export const logout = async (): Promise<void> => {
 
 
 // Post Management
-export const createPost = async (postData: Omit<Post, 'id' | 'timestamp' | 'likes' | 'suggestions'>): Promise<void> => {
-  const batch = writeBatch(db);
-  
-  const newPostRef = doc(collection(db, 'posts'));
-  batch.set(newPostRef, {
-    ...postData,
-    timestamp: serverTimestamp(),
-    likes: [],
-    suggestions: [],
-    approved: false,
-  });
+export const createPost = async (
+    postData: Omit<Post, 'id' | 'timestamp' | 'likes' | 'suggestions'>
+): Promise<void> => {
+    const batch = writeBatch(db);
+    const newPostRef = doc(collection(db, 'posts'));
 
-  const userRef = doc(db, 'users', postData.authorId);
-  batch.update(userRef, {
-    submissionsCount: increment(1)
-  });
-  
-  await batch.commit();
+    batch.set(newPostRef, {
+        ...postData,
+        timestamp: serverTimestamp(),
+        likes: [],
+        suggestions: [],
+    });
+
+    const userRef = doc(db, 'users', postData.authorId);
+    batch.update(userRef, {
+        submissionsCount: increment(1)
+    });
+
+    await batch.commit();
 };
 
 export const updatePost = async (postId: string, data: Partial<Post>): Promise<void> => {
@@ -113,8 +115,8 @@ export const getPosts = async (lastVisible?: DocumentSnapshot, filters: any = {}
     if (filters.province) {
         q = query(q, where('province', '==', filters.province));
     }
-    if (filters.role) {
-        q = query(q, where('authorRole', '==', filters.role));
+    if (filters.type) {
+        q = query(q, where('type', '==', filters.type));
     }
     if (filters.batch) {
         q = query(q, where('authorBatch', '==', filters.batch));

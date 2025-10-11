@@ -46,30 +46,6 @@ const Header: React.FC = () => {
 
         const totalUnread = unreadAnnouncements.length + unreadNotifications.length;
         setUnreadCount(totalUnread);
-
-        // Browser push notification logic - show the single most recent unread item
-        if (totalUnread > 0 && 'Notification' in window && Notification.permission === 'granted') {
-           const allUnread = [...unreadAnnouncements, ...unreadNotifications];
-           
-           allUnread.sort((a, b) => {
-               const timeA = a.createdAt?.toDate().getTime() || 0;
-               const timeB = b.createdAt?.toDate().getTime() || 0;
-               return timeB - timeA;
-           });
-
-           const latestItem = allUnread[0];
-           
-           if (latestItem) {
-             const lastNotifiedId = sessionStorage.getItem('lastNotifiedId');
-             if (latestItem.id !== lastNotifiedId) {
-                new Notification(latestItem.title, { 
-                    body: latestItem.body, 
-                    icon: 'https://res.cloudinary.com/dabfeqgsj/image/upload/v1759778648/cyizstrjgcq0w9fr8cxp.png'
-                });
-                sessionStorage.setItem('lastNotifiedId', latestItem.id);
-             }
-           }
-        }
       }
   }, [userProfile, announcements, notifications]);
 
@@ -132,6 +108,22 @@ const Header: React.FC = () => {
       {children}
     </Link>
   );
+  
+  const NotificationItem: React.FC<{item: NotificationType | Announcement, isPersonal: boolean}> = ({ item, isPersonal }) => {
+    const content = (
+      <div className={`p-3 border-b border-gray-700 last:border-b-0 ${'link' in item && item.link ? 'hover:bg-gray-700 cursor-pointer' : 'hover:bg-gray-700/50'}`}>
+          <p className={`font-semibold text-sm ${isPersonal ? 'text-blue-300' : 'text-gray-200'}`}>{item.title}</p>
+          <p className="text-xs text-gray-400">{item.body}</p>
+          <p className="text-right text-xs text-gray-500 mt-1">{item.createdAt ? new Date(item.createdAt.toDate()).toLocaleDateString() : ''}</p>
+      </div>
+    );
+    
+    if ('link' in item && item.link) {
+      return <Link to={item.link} onClick={() => setNotificationsOpen(false)}>{content}</Link>
+    }
+    return content;
+  };
+
 
   return (
     <>
@@ -141,7 +133,7 @@ const Header: React.FC = () => {
             <img src="https://res.cloudinary.com/dabfeqgsj/image/upload/v1759778648/cyizstrjgcq0w9fr8cxp.png" alt="DCCC Logo" className="h-10 w-auto" />
           </Link>
           
-          <nav className="hidden lg:flex items-center space-x-2">
+          <nav className="hidden md:flex items-center space-x-2">
             <NavLink to="/">Home</NavLink>
             <NavLink to="/shows">Shows</NavLink>
             <NavLink to="/leaderboard">Leaderboard</NavLink>
@@ -157,29 +149,21 @@ const Header: React.FC = () => {
                        {unreadCount > 0 && <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-gray-900"></span>}
                     </button>
                     {isNotificationsOpen && (
-                        <div className="absolute right-0 mt-2 w-80 bg-gray-900/80 backdrop-blur-md rounded-lg shadow-xl border border-gray-700 overflow-hidden">
+                        <div className="absolute right-0 mt-2 w-screen max-w-sm bg-gray-800 rounded-lg shadow-xl border border-gray-600 overflow-hidden">
                            <div className="max-h-[70vh] overflow-y-auto">
                            {notifications.length > 0 && (
                                <div>
-                                   <div className="p-3 font-bold text-center border-b border-gray-700 text-gray-200 bg-gray-800/50 sticky top-0">Personal</div>
+                                   <div className="p-3 font-bold text-center border-b border-gray-700 text-gray-200 bg-gray-900/50 sticky top-0">Personal</div>
                                    {notifications.map(notif => (
-                                       <div key={notif.id} className="p-3 border-b border-gray-700 last:border-b-0 hover:bg-gray-800">
-                                           <p className="font-semibold text-sm text-blue-300">{notif.title}</p>
-                                           <p className="text-xs text-gray-400">{notif.body}</p>
-                                           <p className="text-right text-xs text-gray-500 mt-1">{notif.createdAt ? new Date(notif.createdAt.toDate()).toLocaleDateString() : ''}</p>
-                                       </div>
+                                       <NotificationItem key={notif.id} item={notif} isPersonal={true} />
                                    ))}
                                </div>
                            )}
                            {announcements.length > 0 && (
                                <div>
-                                   <div className="p-3 font-bold text-center border-b border-gray-700 text-gray-200 bg-gray-800/50 sticky top-0">Announcements</div>
+                                   <div className="p-3 font-bold text-center border-b border-gray-700 text-gray-200 bg-gray-900/50 sticky top-0">Announcements</div>
                                    {announcements.map(ann => (
-                                       <div key={ann.id} className="p-3 border-b border-gray-700 last:border-b-0 hover:bg-gray-800">
-                                           <p className="font-semibold text-sm text-gray-200">{ann.title}</p>
-                                           <p className="text-xs text-gray-400">{ann.body}</p>
-                                           <p className="text-right text-xs text-gray-500 mt-1">{ann.createdAt ? new Date(ann.createdAt.toDate()).toLocaleDateString() : ''}</p>
-                                       </div>
+                                       <NotificationItem key={ann.id} item={ann} isPersonal={false} />
                                    ))}
                                </div>
                            )}
@@ -189,7 +173,7 @@ const Header: React.FC = () => {
                     )}
                 </div>
             )}
-             <div className="hidden lg:flex items-center gap-3">
+             <div className="hidden md:flex items-center gap-3">
                 {currentUser ? (
                     <>
                         <Link to="/profile" className="px-4 py-2 hover:bg-gray-700 rounded-lg transition-colors font-semibold text-gray-300">Profile</Link>
@@ -199,7 +183,7 @@ const Header: React.FC = () => {
                     <Link to="/login" className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-md transition-all duration-300 transform hover:scale-105">Login</Link>
                 )}
             </div>
-            <div className="block lg:hidden">
+            <div className="block md:hidden">
               <button onClick={() => setMobileMenuOpen(!isMobileMenuOpen)} className="text-gray-400 focus:outline-none">
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
               </button>
@@ -221,8 +205,8 @@ const Header: React.FC = () => {
             <div className="mt-8 flex flex-col items-center gap-4 w-48">
                 {currentUser ? (
                     <>
-                        <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="w-full text-center text-xl font-semibold px-4 py-3 bg-gray-700 text-gray-200 rounded-lg transition-colors">Profile</Link>
-                        <button onClick={handleLogout} className="w-full text-center text-xl font-semibold px-4 py-3 bg-gradient-to-r from-red-500 to-orange-600 text-white rounded-lg shadow-md">Logout</button>
+                      <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="w-full text-center text-xl font-semibold px-4 py-3 bg-gray-700 text-white rounded-lg shadow-md">Profile</Link>
+                      <button onClick={handleLogout} className="w-full text-center text-xl font-semibold px-4 py-3 bg-gradient-to-r from-red-500 to-orange-600 text-white rounded-lg shadow-md">Logout</button>
                     </>
                 ) : (
                     <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="w-full text-center text-xl font-semibold px-5 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg shadow-md">Login</Link>

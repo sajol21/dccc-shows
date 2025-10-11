@@ -17,6 +17,7 @@ import ProtectedRoute from './components/ProtectedRoute.js';
 import AdminRoute from './components/AdminRoute.js';
 import ProfileRedirect from './components/ProfileRedirect.js';
 import VerifyEmailPage from './pages/VerifyEmailPage.js';
+import CreatePostPage from './pages/CreatePostPage.js';
 
 const App: React.FC = () => {
   return (
@@ -40,6 +41,12 @@ const App: React.FC = () => {
               <Route path="/profile" element={
                 <ProtectedRoute>
                   <ProfileRedirect />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/create" element={
+                <ProtectedRoute>
+                  <CreatePostPage />
                 </ProtectedRoute>
               } />
               

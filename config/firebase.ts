@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getDatabase } from "firebase/database";
 
@@ -18,22 +18,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// Initialize Firestore with settings for offline persistence.
+// This new API replaces the deprecated enableIndexedDbPersistence().
+export const db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+});
+
 export const storage = getStorage(app);
 export const rtdb = getDatabase(app);
 
-// Enable offline persistence for a robust, offline-first experience
-try {
-  enableIndexedDbPersistence(db)
-    .catch((err) => {
-      if (err.code == 'failed-precondition') {
-        // This can happen if multiple tabs are open.
-        console.warn("Firestore persistence failed: Multiple tabs open. Offline features may be limited.");
-      } else if (err.code == 'unimplemented') {
-        // The current browser does not support all of the features required to enable persistence
-        console.warn("Firestore persistence not available in this browser environment.");
-      }
-    });
-} catch (error) {
-    console.error("Error enabling Firestore persistence:", error);
-}
+// The old try-catch block for enableIndexedDbPersistence is no longer needed.
+// The initialization now handles setting up persistence directly.

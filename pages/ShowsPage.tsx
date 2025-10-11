@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { getPosts, createPost, getSiteConfig, getFeaturedPosts } from '../services/firebaseService.js';
+import { getPosts, getSiteConfig, getFeaturedPosts } from '../services/firebaseService.js';
 import { Post, SiteConfig } from '../types.js';
-import { Province, UserRole, PROVINCES, USER_ROLES, ROLE_HIERARCHY, LEADERBOARD_ROLES } from '../constants.js';
+import { PROVINCES, ROLE_HIERARCHY } from '../constants.js';
 import PostCard from '../components/PostCard.js';
 import Spinner from '../components/Spinner.js';
 import { useAuth } from '../hooks/useAuth.js';
-import Modal from '../components/Modal.js';
 import { DocumentSnapshot } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
+
 
 const ShowsPage: React.FC = () => {
   const { userProfile } = useAuth();
@@ -16,8 +16,7 @@ const ShowsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [lastVisible, setLastVisible] = useState<DocumentSnapshot | null>(null);
-  const [filters, setFilters] = useState({ province: '', role: '', batch: '' });
-  const [isCreatePostModalOpen, setCreatePostModalOpen] = useState(false);
+  const [filters, setFilters] = useState({ province: '', type: '', batch: '' });
   const [error, setError] = useState<string | null>(null);
   const [siteConfig, setSiteConfig] = useState<SiteConfig | null>(null);
 
@@ -105,13 +104,13 @@ const ShowsPage: React.FC = () => {
         <h1 className="text-4xl font-bold">The Grand Stage</h1>
         {userProfile && siteConfig && (
           canPost ? (
-            <button 
-              onClick={() => setCreatePostModalOpen(true)} 
+            <Link 
+              to="/create"
               className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-md transition-all duration-300 transform hover:scale-105"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
               Submit Your Show
-            </button>
+            </Link>
           ) : (
             <p className="text-sm text-center md:text-right text-gray-400 bg-gray-800/70 backdrop-blur-lg border border-gray-700 px-4 py-2 rounded-lg">
               Your time to shine is coming! Only {siteConfig.minRoleToPost}s and above can post.
@@ -144,9 +143,11 @@ const ShowsPage: React.FC = () => {
               <option value="">All Provinces</option>
               {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
-          <select name="role" value={filters.role} onChange={handleFilterChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-gray-200">
-              <option value="">All Roles</option>
-              {USER_ROLES.filter(r => LEADERBOARD_ROLES.includes(r)).map(r => <option key={r} value={r}>{r}</option>)}
+          <select name="type" value={filters.type} onChange={handleFilterChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-gray-200">
+              <option value="">All Types</option>
+              <option value="Text">Text</option>
+              <option value="Image">Image</option>
+              <option value="Video">Video</option>
           </select>
           <input type="text" name="batch" placeholder="Filter by Batch (e.g., 27)" value={filters.batch} onChange={handleFilterChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-gray-200" />
       </div>
@@ -174,115 +175,8 @@ const ShowsPage: React.FC = () => {
       ) : (
         <p className="text-center text-gray-400 mt-12">The stage is empty... be the first to shine!</p>
       )}
-      
-      <Modal isOpen={isCreatePostModalOpen} onClose={() => setCreatePostModalOpen(false)} title="Create New Show">
-        <CreatePostForm onSuccess={() => {
-            setCreatePostModalOpen(false);
-            setFilters(f => ({...f})); // Re-trigger filter effect to refresh list
-        }}/>
-      </Modal>
     </div>
   );
-};
-
-// CreatePostForm component
-const CreatePostForm: React.FC<{onSuccess: () => void}> = ({onSuccess}) => {
-    const { userProfile } = useAuth();
-    const [title, setTitle] = useState('');
-    const [description, setDescription] = useState('');
-    const [province, setProvince] = useState<Province>(Province.CULTURAL);
-    const [type, setType] = useState<'Text' | 'Image' | 'Video'>('Text');
-    const [mediaUrl, setMediaUrl] = useState('');
-    const [error, setError] = useState('');
-    const [submitting, setSubmitting] = useState(false);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!userProfile) return;
-
-        if (!title) {
-            setError('A title is required for all shows.');
-            return;
-        }
-        if (type === 'Text' && !description) {
-            setError('A description is required for a text-based show.');
-            return;
-        }
-        if ((type === 'Image' || type === 'Video') && !mediaUrl) {
-            setError('Please provide a URL for your media.');
-            return;
-        }
-
-        setSubmitting(true);
-        setError('');
-
-        try {
-            await createPost({
-                title,
-                description: type === 'Text' ? description : title,
-                province,
-                type,
-                mediaURL: type === 'Text' ? '' : mediaUrl,
-                authorId: userProfile.uid,
-                authorName: userProfile.name,
-                authorBatch: userProfile.batch,
-                authorRole: userProfile.role,
-                approved: false,
-            });
-            alert("Show submitted for approval! The curators are on it.");
-            onSuccess();
-        } catch (err) {
-            console.error(err);
-            setError('Failed to create show. Please try again.');
-        } finally {
-            setSubmitting(false);
-        }
-    };
-    
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4 text-gray-200">
-             {error && <p className="text-center text-red-400 bg-red-900/50 p-3 rounded-md">{error}</p>}
-             <div>
-                <label htmlFor="post-title" className="sr-only">Title</label>
-                <input id="post-title" type="text" placeholder="Title of your masterpiece" value={title} onChange={e => setTitle(e.target.value)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
-             </div>
-            {type === 'Text' && (
-              <div>
-                <label htmlFor="post-description" className="sr-only">Description</label>
-                <textarea id="post-description" placeholder="Tell us the story behind it..." value={description} onChange={e => setDescription(e.target.value)} rows={4} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
-              </div>
-            )}
-             <div>
-                <label htmlFor="post-province" className="sr-only">Province</label>
-                <select id="post-province" value={province} onChange={e => setProvince(e.target.value as Province)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
-                    {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
-            </div>
-             <div>
-                <label htmlFor="post-type" className="sr-only">Type</label>
-                <select id="post-type" value={type} onChange={e => setType(e.target.value as any)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
-                    <option value="Text">Text Only</option>
-                    <option value="Image">Image Link</option>
-                    <option value="Video">Video Link</option>
-                </select>
-            </div>
-            {(type === 'Image') && 
-                <div>
-                    <label htmlFor="post-image-url" className="sr-only">Image URL</label>
-                    <input id="post-image-url" type="text" placeholder="Image URL (e.g., from Imgur, Cloudinary)" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
-                </div>
-            }
-            {(type === 'Video') && 
-                <div>
-                    <label htmlFor="post-video-url" className="sr-only">Video URL</label>
-                    <input id="post-video-url" type="text" placeholder="YouTube/Vimeo URL" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
-                </div>
-            }
-            <button type="submit" disabled={submitting} className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400">
-                {submitting ? 'Submitting...' : 'Submit Show'}
-            </button>
-        </form>
-    );
 };
 
 export default ShowsPage;

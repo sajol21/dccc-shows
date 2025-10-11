@@ -21,6 +21,15 @@ const SignUpPage: React.FC = () => {
       setError("Passwords do not match");
       return;
     }
+
+    const allowedDomains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com'];
+    const emailDomain = email.split('@')[1];
+
+    if (!emailDomain || !allowedDomains.includes(emailDomain.toLowerCase())) {
+      setError('Sorry, only emails from major providers (e.g., Gmail, Yahoo, Outlook) are currently accepted.');
+      return;
+    }
+    
     setError('');
     setLoading(true);
     try {
