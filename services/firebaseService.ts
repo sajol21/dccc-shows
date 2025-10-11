@@ -374,18 +374,50 @@ export const getAllPostsAdmin = async (): Promise<Post[]> => {
 
 export const approvePost = async (postId: string, approved: boolean): Promise<void> => {
     const postRef = doc(db, 'posts', postId);
+    
+    const postSnap = await getDoc(postRef);
+    if (!postSnap.exists()) {
+        console.error("Post not found, cannot send notification:", postId);
+        return; // Exit if post doesn't exist
+    }
+    const post = postSnap.data() as Post;
+    
     await updateDoc(postRef, { approved });
+
+    // Create notification for the author
+    if (approved) {
+        await createNotification(
+            post.authorId,
+            "Your show is live!",
+            `Congratulations! Your show "${post.title}" has been approved and is now public.`,
+            `/post/${postId}`
+        );
+    } else {
+        await createNotification(
+            post.authorId,
+            "Update on your show",
+            `An administrator has updated the visibility for your show "${post.title}". It is no longer public.`,
+            `/post/${postId}`
+        );
+    }
 }
 
 export const deletePost = async (post: Post): Promise<void> => {
     const postRef = doc(db, 'posts', post.id);
     const userRef = doc(db, 'users', post.authorId);
 
+    // Create notification before deleting the post
+    await createNotification(
+        post.authorId,
+        "Your show was removed",
+        `An administrator has removed your show "${post.title}" from the platform.`,
+        `/user/${post.authorId}` // Link to user's profile as post is gone
+    );
+
     const batch = writeBatch(db);
     batch.delete(postRef);
 
     // Decrement user stats. This is important for leaderboard accuracy.
-    // This requires the admin to have write permissions on user docs.
     const likesCount = post.likes?.length || 0;
     const suggestionsCount = post.suggestions?.length || 0;
     const scoreToRemove = likesCount + (suggestionsCount * 5);
