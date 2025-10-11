@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth.js';
+import { useAuth } from '../contexts/AuthContext.js';
 import { logout, onAnnouncementsUpdate, markAnnouncementsAsRead, onNotificationsUpdate, markNotificationsAsRead, deleteNotification, clearAllNotifications } from '../services/firebaseService.js';
 import { UserRole } from '../constants.js';
 import { Announcement, Notification as NotificationType } from '../types.js';

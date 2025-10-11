@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPost } from '../services/firebaseService.js';
 import { Province, PROVINCES } from '../constants.js';
-import { useAuth } from '../hooks/useAuth.js';
+import { useAuth } from '../contexts/AuthContext.js';
 import Spinner from '../components/Spinner.js';
 
 const CreatePostPage: React.FC = () => {

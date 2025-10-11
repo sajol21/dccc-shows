@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth.js';
+import { useAuth } from '../contexts/AuthContext.js';
 import { resendVerificationEmail, logout } from '../services/firebaseService.js';
 
 const VerifyEmailPage: React.FC = () => {

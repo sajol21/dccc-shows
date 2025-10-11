@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth.js';
+// fix: Corrected import path for useAuth hook.
+import { useAuth } from '../contexts/AuthContext.js';
 import Spinner from './Spinner.js';
 
 const ProfileRedirect: React.FC = () => {

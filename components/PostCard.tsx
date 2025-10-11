@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Post } from '../types.js';
-import { useAuth } from '../hooks/useAuth.js';
+import { useAuth } from '../contexts/AuthContext.js';
 import { toggleLikePost } from '../services/firebaseService.js';
 import RoleBadge from './RoleBadge.js';
 

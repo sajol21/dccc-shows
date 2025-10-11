@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth.js';
+import { useAuth } from '../contexts/AuthContext.js';
 import Spinner from './Spinner.js';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {

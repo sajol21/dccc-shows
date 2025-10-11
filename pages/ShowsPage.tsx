@@ -4,7 +4,7 @@ import { Post, SiteConfig } from '../types.js';
 import { PROVINCES, ROLE_HIERARCHY } from '../constants.js';
 import PostCard from '../components/PostCard.js';
 import Spinner from '../components/Spinner.js';
-import { useAuth } from '../hooks/useAuth.js';
+import { useAuth } from '../contexts/AuthContext.js';
 import { DocumentSnapshot } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 

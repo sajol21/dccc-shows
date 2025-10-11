@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { getPost, addSuggestion, toggleLikePost, deletePost, updatePost } from '../services/firebaseService.js';
 import { Post } from '../types.js';
 import { PROVINCES, UserRole } from '../constants.js';
-import { useAuth } from '../hooks/useAuth.js';
+import { useAuth } from '../contexts/AuthContext.js';
 import Spinner from '../components/Spinner.js';
 import Modal from '../components/Modal.js';
 import RoleBadge from '../components/RoleBadge.js';

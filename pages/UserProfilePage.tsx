@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth.js';
+import { useAuth } from '../contexts/AuthContext.js';
 import { getUserProfile, updateUserProfile, getPostsByAuthor, createPromotionRequest, getUsersPendingRequest } from '../services/firebaseService.js';
 import { Province, PROVINCES, UserRole } from '../constants.js';
 import { UserProfile, Post, PromotionRequest } from '../types.js';
