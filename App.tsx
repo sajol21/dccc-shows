@@ -18,6 +18,8 @@ import AdminRoute from './components/AdminRoute.js';
 import ProfileRedirect from './components/ProfileRedirect.js';
 import VerifyEmailPage from './pages/VerifyEmailPage.js';
 import CreatePostPage from './pages/CreatePostPage.js';
+import SessionsPage from './pages/SessionsPage.js';
+import SessionDetailPage from './pages/SessionDetailPage.js';
 
 const App: React.FC = () => {
   return (
@@ -29,6 +31,8 @@ const App: React.FC = () => {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/shows" element={<ShowsPage />} />
+              <Route path="/sessions" element={<SessionsPage />} />
+              <Route path="/session/:id" element={<SessionDetailPage />} />
               <Route path="/post/:id" element={<PostDetailPage />} />
               <Route path="/user/:uid" element={<UserProfilePage />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />

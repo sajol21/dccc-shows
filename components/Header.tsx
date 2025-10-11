@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.js';
-import { logout, onAnnouncementsUpdate, markAnnouncementsAsRead, onNotificationsUpdate, markNotificationsAsRead } from '../services/firebaseService.js';
+import { logout, onAnnouncementsUpdate, markAnnouncementsAsRead, onNotificationsUpdate, markNotificationsAsRead, deleteNotification } from '../services/firebaseService.js';
 import { UserRole } from '../constants.js';
 import { Announcement, Notification as NotificationType } from '../types.js';
 import { Unsubscribe } from 'firebase/firestore';
@@ -110,11 +110,34 @@ const Header: React.FC = () => {
   );
   
   const NotificationItem: React.FC<{item: NotificationType | Announcement, isPersonal: boolean}> = ({ item, isPersonal }) => {
+    const handleDelete = async (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (window.confirm('Are you sure you want to delete this notification?')) {
+          try {
+              await deleteNotification(item.id);
+              // The onSnapshot listener will handle the UI update automatically.
+          } catch (error) {
+              console.error("Failed to delete notification:", error);
+              alert("Could not delete notification. Please try again.");
+          }
+      }
+    };
+
     const content = (
-      <div className={`p-3 border-b border-gray-700 last:border-b-0 ${'link' in item && item.link ? 'hover:bg-gray-700 cursor-pointer' : 'hover:bg-gray-700/50'}`}>
+      <div className={`relative p-3 border-b border-gray-700 last:border-b-0 ${'link' in item && item.link ? 'hover:bg-gray-700 cursor-pointer' : 'hover:bg-gray-700/50'} group`}>
           <p className={`font-semibold text-sm ${isPersonal ? 'text-blue-300' : 'text-gray-200'}`}>{item.title}</p>
           <p className="text-xs text-gray-400">{item.body}</p>
           <p className="text-right text-xs text-gray-500 mt-1">{item.createdAt ? new Date(item.createdAt.toDate()).toLocaleDateString() : ''}</p>
+          {isPersonal && (
+            <button 
+                onClick={handleDelete}
+                className="absolute top-1 right-1 p-1 rounded-full text-gray-500 hover:bg-gray-600 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label="Delete notification"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          )}
       </div>
     );
     
@@ -136,6 +159,7 @@ const Header: React.FC = () => {
           <nav className="hidden md:flex items-center space-x-2">
             <NavLink to="/">Home</NavLink>
             <NavLink to="/shows">Shows</NavLink>
+            <NavLink to="/sessions">Sessions</NavLink>
             <NavLink to="/leaderboard">Leaderboard</NavLink>
             <NavLink to="/about">About</NavLink>
             {userProfile?.role === UserRole.ADMIN && <NavLink to="/admin">Admin</NavLink>}
@@ -198,6 +222,7 @@ const Header: React.FC = () => {
             <nav className="flex flex-col items-center justify-center text-center gap-4">
                 <NavLink to="/" isMobile>Home</NavLink>
                 <NavLink to="/shows" isMobile>Shows</NavLink>
+                <NavLink to="/sessions" isMobile>Sessions</NavLink>
                 <NavLink to="/leaderboard" isMobile>Leaderboard</NavLink>
                 <NavLink to="/about" isMobile>About</NavLink>
                 {userProfile?.role === UserRole.ADMIN && <NavLink to="/admin" isMobile>Admin</NavLink>}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { UserProfile, Post, SiteConfig, Announcement, PromotionRequest } from '../types.js';
+import { UserProfile, Post, SiteConfig, Announcement, PromotionRequest, Session, SessionType } from '../types.js';
 import { 
   getAllUsers, 
   updateUserRole, 
@@ -14,12 +14,17 @@ import {
   getAnnouncements,
   getPendingPromotionRequests,
   approvePromotionRequest,
-  rejectPromotionRequest
+  rejectPromotionRequest,
+  getSessions,
+  createSession,
+  updateSession,
+  deleteSession
 } from '../services/firebaseService.js';
-import { USER_ROLES, UserRole } from '../constants.js';
+import { USER_ROLES, UserRole, SESSION_TYPES } from '../constants.js';
 import Spinner from '../components/Spinner.js';
+import { Timestamp } from 'firebase/firestore';
 
-type Tab = 'dashboard' | 'users' | 'posts' | 'promotions' | 'announcements' | 'settings';
+type Tab = 'dashboard' | 'users' | 'posts' | 'promotions' | 'announcements' | 'sessions' | 'settings';
 
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -27,6 +32,7 @@ const AdminDashboard: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [promotionRequests, setPromotionRequests] = useState<PromotionRequest[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [siteConfig, setSiteConfig] = useState<Partial<SiteConfig>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,31 +40,49 @@ const AdminDashboard: React.FC = () => {
   const fetchData = async (isMountedCheck: () => boolean) => {
     setLoading(true);
     setError(null);
-    try {
-        const [userData, postData, configData, announcementData, requestData] = await Promise.all([
-            getAllUsers(), 
-            getAllPostsAdmin(),
-            getSiteConfig(),
-            getAnnouncements(),
-            getPendingPromotionRequests()
-        ]);
-        if (isMountedCheck()) {
-            setUsers(userData);
-            setPosts(postData);
-            setSiteConfig(configData || {});
-            setAnnouncements(announcementData);
-            setPromotionRequests(requestData);
-        }
-    } catch(err) {
-        if (isMountedCheck()) {
-            console.error("Failed to fetch admin data", err);
-            setError("Failed to load dashboard data. Please check permissions and try again.");
-        }
-    } finally {
-        if (isMountedCheck()) {
-            setLoading(false);
-        }
+    const errorMessages: string[] = [];
+    
+    const [
+        userResult, 
+        postResult, 
+        configResult, 
+        announcementResult, 
+        requestResult, 
+        sessionResult
+    ] = await Promise.allSettled([
+        getAllUsers(), 
+        getAllPostsAdmin(),
+        getSiteConfig(),
+        getAnnouncements(),
+        getPendingPromotionRequests(),
+        getSessions()
+    ]);
+
+    if (!isMountedCheck()) return;
+
+    if (userResult.status === 'fulfilled') setUsers(userResult.value);
+    else { console.error("Failed to fetch users:", userResult.reason); errorMessages.push("users"); }
+    
+    if (postResult.status === 'fulfilled') setPosts(postResult.value);
+    else { console.error("Failed to fetch posts:", postResult.reason); errorMessages.push("posts"); }
+
+    if (configResult.status === 'fulfilled') setSiteConfig(configResult.value || {});
+    else { console.error("Failed to fetch site config:", configResult.reason); errorMessages.push("site settings"); }
+
+    if (announcementResult.status === 'fulfilled') setAnnouncements(announcementResult.value);
+    else { console.error("Failed to fetch announcements:", announcementResult.reason); errorMessages.push("announcements"); }
+    
+    if (requestResult.status === 'fulfilled') setPromotionRequests(requestResult.value);
+    else { console.error("Failed to fetch promotion requests:", requestResult.reason); errorMessages.push("promotion requests"); }
+
+    if (sessionResult.status === 'fulfilled') setSessions(sessionResult.value);
+    else { console.error("Failed to fetch sessions:", sessionResult.reason); errorMessages.push("sessions"); }
+
+    if (errorMessages.length > 0) {
+        setError(`Failed to load some dashboard data. Please check admin permissions in Firestore rules for: ${errorMessages.join(', ')}.`);
     }
+
+    setLoading(false);
   };
   
   useEffect(() => {
@@ -121,11 +145,13 @@ const AdminDashboard: React.FC = () => {
         <TabButton tab="posts" label="Manage Posts" count={pendingPostsCount} />
         <TabButton tab="promotions" label="Promotions" count={promotionRequests.length} />
         <TabButton tab="announcements" label="Announcements" />
+        <TabButton tab="sessions" label="Sessions" />
         <TabButton tab="settings" label="Site Settings" />
       </div>
 
-      {loading ? <Spinner /> : error ? <p className="text-center text-red-400 bg-red-900/50 p-3 rounded-md">{error}</p> : (
+      {loading ? <Spinner /> : (
         <div>
+          {error && <p className="text-center text-red-400 bg-red-900/50 p-3 mb-4 rounded-md">{error}</p>}
           {activeTab === 'dashboard' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="bg-gray-800 p-4 rounded-lg text-center border border-gray-700">
@@ -150,6 +176,7 @@ const AdminDashboard: React.FC = () => {
           {activeTab === 'posts' && <PostManagementTab posts={posts} onApprove={handleApprovePost} onDelete={handleDeletePost} />}
           {activeTab === 'promotions' && <PromotionRequestTab requests={promotionRequests} onUpdate={refreshData} />}
           {activeTab === 'announcements' && <AnnouncementsTab announcements={announcements} onUpdate={refreshData} />}
+          {activeTab === 'sessions' && <SessionManagementTab sessions={sessions} onUpdate={refreshData} />}
           {activeTab === 'settings' && <SettingsTab siteConfig={siteConfig} onResetLeaderboard={handleResetLeaderboard} onUpdate={refreshData}/>}
         </div>
       )}
@@ -286,6 +313,136 @@ const AnnouncementsTab: React.FC<{ announcements: Announcement[], onUpdate: () =
         </div>
     );
 };
+
+const SessionManagementTab: React.FC<{ sessions: Session[], onUpdate: () => void }> = ({ sessions, onUpdate }) => {
+    const initialFormState = { 
+        type: SessionType.WORKSHOP, 
+        title: '', 
+        description: '', 
+        bannerUrl: '', 
+        linkUrl: '',
+        place: '',
+        eventDate: '' 
+    };
+    const [formData, setFormData] = useState(initialFormState);
+    const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    const handleEditClick = (session: Session) => {
+        setEditingSessionId(session.id);
+        const d = session.eventDate.toDate();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mi = String(d.getMinutes()).padStart(2, '0');
+        const dateString = `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+
+        setFormData({ 
+            type: session.type, 
+            title: session.title, 
+            description: session.description, 
+            bannerUrl: session.bannerUrl, 
+            linkUrl: session.linkUrl || '',
+            place: session.place || '',
+            eventDate: dateString,
+        });
+    };
+
+    const handleCancelEdit = () => {
+        setEditingSessionId(null);
+        setFormData(initialFormState);
+    };
+
+    const handleDelete = async (sessionId: string) => {
+        if(window.confirm('Are you sure you want to delete this session? This will not remove the announcement.')) {
+            await deleteSession(sessionId);
+            onUpdate();
+        }
+    }
+
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        setSubmitting(true);
+        try {
+            const payload: any = {
+                type: formData.type,
+                title: formData.title,
+                description: formData.description,
+                bannerUrl: formData.bannerUrl,
+                eventDate: Timestamp.fromDate(new Date(formData.eventDate)),
+            };
+
+            if (formData.linkUrl) {
+                payload.linkUrl = formData.linkUrl;
+            }
+            if (formData.place) {
+                payload.place = formData.place;
+            }
+
+            if (editingSessionId) {
+                await updateSession(editingSessionId, payload);
+                alert('Session updated successfully!');
+            } else {
+                await createSession(payload);
+                alert('Session created and announcement sent!');
+            }
+            handleCancelEdit();
+            onUpdate();
+        } catch (err) {
+            console.error(err);
+            alert('Failed to save session. Ensure the date and time are set.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <h3 className="text-xl font-semibold mb-4">{editingSessionId ? 'Edit Session' : 'Create New Session'}</h3>
+                <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-lg bg-gray-800 border-gray-700">
+                    <select name="type" value={formData.type} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
+                        {SESSION_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                    </select>
+                    <input type="text" name="title" placeholder="Session Title" value={formData.title} onChange={handleInputChange} required className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white" />
+                    <textarea name="description" placeholder="Description" value={formData.description} onChange={handleInputChange} rows={4} required className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white" />
+                    <input type="url" name="bannerUrl" placeholder="Banner Image URL" value={formData.bannerUrl} onChange={handleInputChange} required className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white" />
+                    <input type="text" name="place" placeholder="Location / Venue" value={formData.place} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white" />
+                    <input type="url" name="linkUrl" placeholder="Registration/Info Link (Optional)" value={formData.linkUrl} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white" />
+                    <div>
+                        <label htmlFor="event-date" className="block text-sm font-medium text-gray-300 mb-1">Session Date & Time</label>
+                        <input id="event-date" type="datetime-local" name="eventDate" value={formData.eventDate} onChange={handleInputChange} required className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white" />
+                    </div>
+                    <div className="flex gap-2">
+                        {editingSessionId && <button type="button" onClick={handleCancelEdit} className="w-full py-2 bg-gray-600 text-white rounded-md hover:bg-gray-500">Cancel</button>}
+                        <button type="submit" disabled={submitting} className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400">{submitting ? 'Saving...' : (editingSessionId ? 'Update Session' : 'Create Session')}</button>
+                    </div>
+                </form>
+            </div>
+            <div>
+                <h3 className="text-xl font-semibold mb-4">Existing Sessions</h3>
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                    {sessions.map(session => (
+                        <div key={session.id} className="p-3 bg-gray-800 rounded-lg border border-gray-700">
+                            <p className="font-bold text-white">{session.title} <span className="text-xs font-normal text-gray-400">({session.type})</span></p>
+                            <p className="text-xs text-gray-400 text-right mt-1">{session.eventDate ? new Date(session.eventDate.toDate()).toLocaleString() : 'Date not set'}</p>
+                            <div className="flex gap-2 mt-2">
+                                <button onClick={() => handleEditClick(session)} className="px-2 py-1 text-xs rounded bg-blue-600 hover:bg-blue-700 text-white">Edit</button>
+                                <button onClick={() => handleDelete(session.id)} className="px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white">Delete</button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 const SettingsTab: React.FC<{ siteConfig: Partial<SiteConfig>, onResetLeaderboard: () => void, onUpdate: () => void }> = ({ siteConfig: initialConfig, onResetLeaderboard, onUpdate }) => {
     const [config, setConfig] = useState(initialConfig);

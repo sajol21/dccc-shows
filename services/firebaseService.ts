@@ -3,7 +3,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, auth } from '../config/firebase.js';
-import { UserProfile, Post, Suggestion, PromotionRequest, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement, Notification } from '../types.js';
+import { UserProfile, Post, Suggestion, PromotionRequest, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement, Notification, Session } from '../types.js';
 import { UserRole, Province, LEADERBOARD_ROLES } from '../constants.js';
 import { signOut, GoogleAuthProvider, signInWithPopup, sendEmailVerification } from 'firebase/auth';
 
@@ -285,6 +285,11 @@ const createNotification = async (userId: string, title: string, body: string, l
     });
 };
 
+export const deleteNotification = async (notificationId: string): Promise<void> => {
+    const notificationRef = doc(db, 'notifications', notificationId);
+    await deleteDoc(notificationRef);
+};
+
 export const onNotificationsUpdate = (userId: string, callback: (notifications: Notification[]) => void): Unsubscribe => {
     const q = query(
         collection(db, 'notifications'),
@@ -529,4 +534,42 @@ export const rejectPromotionRequest = async (requestId: string, userId: string):
     const requestRef = doc(db, 'promotionRequests', requestId);
     await updateDoc(requestRef, { status: 'rejected' });
     await createNotification(userId, "Promotion Request Update", "Your recent promotion request was not approved at this time.", `/user/${userId}`);
+};
+
+// Session Management
+export const createSession = async (sessionData: Omit<Session, 'id' | 'createdAt'>): Promise<void> => {
+    await addDoc(collection(db, 'sessions'), {
+        ...sessionData,
+        createdAt: serverTimestamp(),
+    });
+    // Also create a global announcement for the session
+    await createAnnouncement(
+        `New ${sessionData.type}: ${sessionData.title}`,
+        sessionData.description
+    );
+};
+
+export const getSessions = async (): Promise<Session[]> => {
+    const q = query(collection(db, 'sessions'), orderBy('eventDate', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Session));
+};
+
+export const getSession = async (sessionId: string): Promise<Session | null> => {
+    const sessionRef = doc(db, 'sessions', sessionId);
+    const docSnap = await getDoc(sessionRef);
+    if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as Session;
+    }
+    return null;
+}
+
+export const updateSession = async (sessionId: string, data: Partial<Session>): Promise<void> => {
+    const sessionRef = doc(db, 'sessions', sessionId);
+    await updateDoc(sessionRef, data);
+};
+
+export const deleteSession = async (sessionId: string): Promise<void> => {
+    const sessionRef = doc(db, 'sessions', sessionId);
+    await deleteDoc(sessionRef);
 };

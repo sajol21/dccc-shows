@@ -1,3 +1,4 @@
+import { SessionType } from "./types.js";
 
 export enum UserRole {
   GENERAL_STUDENT = "General Student",
@@ -15,6 +16,7 @@ export enum Province {
 
 export const USER_ROLES = Object.values(UserRole);
 export const PROVINCES = Object.values(Province);
+export const SESSION_TYPES = Object.values(SessionType);
 
 export const ROLE_HIERARCHY: { [key in UserRole]: number } = {
     [UserRole.GENERAL_STUDENT]: 0,

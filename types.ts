@@ -97,3 +97,21 @@ export interface Notification {
     read: boolean;
     createdAt: Timestamp;
 }
+
+export enum SessionType {
+  WORKSHOP = "Workshop",
+  SESSION = "Session",
+  MEETUP = "Meetup",
+}
+
+export interface Session {
+  id: string;
+  type: SessionType;
+  title: string;
+  description: string;
+  bannerUrl: string;
+  linkUrl?: string;
+  place?: string;
+  eventDate: Timestamp;
+  createdAt: Timestamp;
+}
