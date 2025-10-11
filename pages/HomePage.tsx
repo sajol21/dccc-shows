@@ -13,6 +13,7 @@ const HomePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -22,23 +23,33 @@ const HomePage: React.FC = () => {
             getLeaderboardUsers(),
             getSiteConfig()
         ]);
-        setLatestPosts(posts.slice(0, 6)); // show latest 6
-        setLeaderboard(topUsers.slice(0, 5)); // show top 5
-        setSiteConfig(config);
+        if (isMounted) {
+            setLatestPosts(posts.slice(0, 6)); // show latest 6
+            setLeaderboard(topUsers.slice(0, 5)); // show top 5
+            setSiteConfig(config);
+        }
       } catch (err: any) {
-        console.error("Error fetching homepage data:", err);
-        if (err.code === 'permission-denied') {
-          setError("Could not load data due to insufficient permissions. An administrator needs to configure the database security rules to allow public access to posts and user profiles.");
-        } else if (err.code === 'failed-precondition') {
-          setError("Database query failed: A required index is missing. Check the browser's developer console (F12) for an error message containing a link to create the index in Firebase.");
-        } else {
-          setError("An unexpected error occurred while fetching data.");
+        if (isMounted) {
+            console.error("Error fetching homepage data:", err);
+            if (err.code === 'permission-denied') {
+              setError("Could not load data due to insufficient permissions. An administrator needs to configure the database security rules to allow public access to posts and user profiles.");
+            } else if (err.code === 'failed-precondition') {
+              setError("Database query failed: A required index is missing. Check the browser's developer console (F12) for an error message containing a link to create the index in Firebase.");
+            } else {
+              setError("An unexpected error occurred while fetching data.");
+            }
         }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+            setLoading(false);
+        }
       }
     };
     fetchData();
+
+    return () => {
+        isMounted = false;
+    };
   }, []);
 
   const Alert: React.FC<{ message: string }> = ({ message }) => (

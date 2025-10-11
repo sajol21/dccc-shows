@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getPosts, createPost, getSiteConfig, getFeaturedPosts } from '../services/firebaseService.js';
 import { Post, SiteConfig } from '../types.js';
 import { Province, UserRole, PROVINCES, USER_ROLES, ROLE_HIERARCHY, LEADERBOARD_ROLES } from '../constants.js';
@@ -22,46 +22,72 @@ const ShowsPage: React.FC = () => {
   const [siteConfig, setSiteConfig] = useState<SiteConfig | null>(null);
 
   useEffect(() => {
-    getSiteConfig().then(setSiteConfig);
-    getFeaturedPosts().then(setFeaturedPosts);
+    let isMounted = true;
+    const fetchSideData = async () => {
+        const [config, featured] = await Promise.all([getSiteConfig(), getFeaturedPosts()]);
+        if (isMounted) {
+            setSiteConfig(config);
+            setFeaturedPosts(featured);
+        }
+    };
+    fetchSideData();
+    return () => { isMounted = false; };
   }, []);
 
-  const fetchPosts = useCallback(async (reset = false) => {
-    if (loading || (!hasMore && !reset)) return;
-    setLoading(true);
-    setError(null);
-
-    try {
-      const lastDoc = reset ? undefined : lastVisible;
-      const { posts: newPosts, lastVisible: newLastVisible } = await getPosts(lastDoc, filters);
-      
-      setPosts(prev => reset ? newPosts : [...prev, ...newPosts]);
-      setLastVisible(newLastVisible);
-      setHasMore(newPosts.length > 0);
-    } catch (err: any) {
-        console.error("Error fetching posts:", err);
-        if (err.code === 'permission-denied') {
-            setError("Could not load posts. The stage lights seem to be off.");
-        } else if (err.code === 'failed-precondition') {
-            setError("A database index is needed to perform this filter. An admin can create this via a link in the browser's developer console (F12).");
-        } else {
-            setError("An unexpected error occurred while fetching the shows.");
-        }
-        setPosts([]);
-    } finally {
-        setLoading(false);
-    }
-  }, [loading, hasMore, lastVisible, filters]);
-
   useEffect(() => {
-    setPosts([]);
-    setLastVisible(null);
-    setHasMore(true);
-    fetchPosts(true);
+    let isMounted = true;
+    const fetchPostsOnFilter = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const { posts: newPosts, lastVisible: newLastVisible } = await getPosts(undefined, filters);
+            if (isMounted) {
+                setPosts(newPosts);
+                setLastVisible(newLastVisible);
+                setHasMore(newPosts.length > 0);
+            }
+        } catch (err: any) {
+            if (isMounted) {
+                console.error("Error fetching posts:", err);
+                if (err.code === 'permission-denied') {
+                    setError("Could not load posts. The stage lights seem to be off.");
+                } else if (err.code === 'failed-precondition') {
+                    setError("A database index is needed to perform this filter. An admin can create this via a link in the browser's developer console (F12).");
+                } else {
+                    setError("An unexpected error occurred while fetching the shows.");
+                }
+                setPosts([]);
+            }
+        } finally {
+            if (isMounted) {
+                setLoading(false);
+            }
+        }
+    };
+    
+    fetchPostsOnFilter();
+
+    return () => { isMounted = false; };
   }, [filters]);
   
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleLoadMore = async () => {
+    if (loading || !hasMore) return;
+    setLoading(true);
+    try {
+      const { posts: newPosts, lastVisible: newLastVisible } = await getPosts(lastVisible, filters);
+      setPosts(prev => [...prev, ...newPosts]);
+      setLastVisible(newLastVisible);
+      setHasMore(newPosts.length > 0);
+    } catch (err) {
+       console.error("Error fetching more posts:", err);
+       setError("Failed to load more shows.");
+    } finally {
+        setLoading(false);
+    }
   };
 
   const Alert: React.FC<{ message: string }> = ({ message }) => (
@@ -139,7 +165,7 @@ const ShowsPage: React.FC = () => {
 
           {!loading && hasMore && (
               <div className="text-center mt-8">
-                  <button onClick={() => fetchPosts()} className="px-6 py-3 bg-gray-700 text-white backdrop-blur-sm border border-gray-600 rounded-lg hover:bg-gray-600">
+                  <button onClick={handleLoadMore} className="px-6 py-3 bg-gray-700 text-white backdrop-blur-sm border border-gray-600 rounded-lg hover:bg-gray-600">
                       Encore! (Load More)
                   </button>
               </div>
@@ -152,7 +178,7 @@ const ShowsPage: React.FC = () => {
       <Modal isOpen={isCreatePostModalOpen} onClose={() => setCreatePostModalOpen(false)} title="Create New Show">
         <CreatePostForm onSuccess={() => {
             setCreatePostModalOpen(false);
-            fetchPosts(true);
+            setFilters(f => ({...f})); // Re-trigger filter effect to refresh list
         }}/>
       </Modal>
     </div>

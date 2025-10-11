@@ -31,7 +31,7 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = async (isMountedCheck: () => boolean) => {
     setLoading(true);
     setError(null);
     try {
@@ -42,45 +42,60 @@ const AdminDashboard: React.FC = () => {
             getAnnouncements(),
             getPendingPromotionRequests()
         ]);
-        setUsers(userData);
-        setPosts(postData);
-        setSiteConfig(configData || {});
-        setAnnouncements(announcementData);
-        setPromotionRequests(requestData);
+        if (isMountedCheck()) {
+            setUsers(userData);
+            setPosts(postData);
+            setSiteConfig(configData || {});
+            setAnnouncements(announcementData);
+            setPromotionRequests(requestData);
+        }
     } catch(err) {
-        console.error("Failed to fetch admin data", err);
-        setError("Failed to load dashboard data. Please check permissions and try again.");
+        if (isMountedCheck()) {
+            console.error("Failed to fetch admin data", err);
+            setError("Failed to load dashboard data. Please check permissions and try again.");
+        }
+    } finally {
+        if (isMountedCheck()) {
+            setLoading(false);
+        }
     }
-    setLoading(false);
   };
   
   useEffect(() => {
-    fetchData();
+    let isMounted = true;
+    fetchData(() => isMounted);
+    return () => { isMounted = false; };
   }, []);
+
+  const refreshData = () => {
+      let isMounted = true;
+      fetchData(() => isMounted);
+      return () => { isMounted = false; };
+  };
 
   const handleRoleChange = async (uid: string, role: UserRole) => {
     if (window.confirm('Are you sure you want to change this user\'s role?')) {
         await updateUserRole(uid, role);
-        fetchData(); // Refresh data
+        refreshData(); // Refresh data
     }
   };
 
   const handleApprovePost = async (postId: string, approved: boolean) => {
     await approvePost(postId, approved);
-    fetchData(); // Refresh data
+    refreshData(); // Refresh data
   };
 
   const handleDeletePost = async (post: Post) => {
     if(window.confirm('Are you sure you want to delete this post permanently? This cannot be undone.')) {
         await deletePost(post);
-        fetchData(); // Refresh data
+        refreshData(); // Refresh data
     }
   };
 
   const handleResetLeaderboard = async () => {
     if(window.confirm('Are you sure you want to archive the current leaderboard and reset all user scores to zero? This is irreversible.')) {
         await resetLeaderboard();
-        fetchData(); // Refresh data
+        refreshData(); // Refresh data
         alert('Leaderboard has been archived and reset.');
     }
   };
@@ -133,9 +148,9 @@ const AdminDashboard: React.FC = () => {
           )}
           {activeTab === 'users' && <UserManagementTab users={users} onRoleChange={handleRoleChange} />}
           {activeTab === 'posts' && <PostManagementTab posts={posts} onApprove={handleApprovePost} onDelete={handleDeletePost} />}
-          {activeTab === 'promotions' && <PromotionRequestTab requests={promotionRequests} onUpdate={fetchData} />}
-          {activeTab === 'announcements' && <AnnouncementsTab announcements={announcements} onUpdate={fetchData} />}
-          {activeTab === 'settings' && <SettingsTab siteConfig={siteConfig} onResetLeaderboard={handleResetLeaderboard} onUpdate={fetchData}/>}
+          {activeTab === 'promotions' && <PromotionRequestTab requests={promotionRequests} onUpdate={refreshData} />}
+          {activeTab === 'announcements' && <AnnouncementsTab announcements={announcements} onUpdate={refreshData} />}
+          {activeTab === 'settings' && <SettingsTab siteConfig={siteConfig} onResetLeaderboard={handleResetLeaderboard} onUpdate={refreshData}/>}
         </div>
       )}
     </div>

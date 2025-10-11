@@ -7,11 +7,18 @@ const Footer: React.FC = () => {
     const [config, setConfig] = useState<SiteConfig | null>(null);
 
     useEffect(() => {
+        let isMounted = true;
         const fetchConfig = async () => {
             const siteConfig = await getSiteConfig();
-            setConfig(siteConfig);
+            if (isMounted) {
+                setConfig(siteConfig);
+            }
         }
         fetchConfig();
+
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
   return (

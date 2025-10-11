@@ -14,32 +14,55 @@ const LeaderboardPage: React.FC = () => {
   const [title, setTitle] = useState('Current Leaderboard');
 
   useEffect(() => {
+    let isMounted = true;
     const fetchInitialData = async () => {
         try {
             const archiveList = await getLeaderboardArchives();
-            setArchives(archiveList);
+            if (isMounted) {
+                setArchives(archiveList);
+            }
         } catch (error) {
             console.error("Could not fetch leaderboard archives:", error);
         }
     };
     fetchInitialData();
+
+    return () => {
+        isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchLeaderboard = async () => {
       setLoading(true);
-      if (view === 'current') {
-        setTitle('Current Leaderboard');
-        const userList = await getLeaderboardUsers();
-        setUsers(userList);
-      } else {
-        setTitle(`Leaderboard: ${view}`);
-        const archiveData = await getArchivedLeaderboard(view);
-        setUsers(archiveData ? archiveData.users : []);
+      try {
+        if (view === 'current') {
+            const userList = await getLeaderboardUsers();
+            if (isMounted) {
+                setTitle('Current Leaderboard');
+                setUsers(userList);
+            }
+        } else {
+            const archiveData = await getArchivedLeaderboard(view);
+            if (isMounted) {
+                setTitle(`Leaderboard: ${view}`);
+                setUsers(archiveData ? archiveData.users : []);
+            }
+        }
+      } catch (error) {
+          console.error("Failed to fetch leaderboard data:", error);
+      } finally {
+        if (isMounted) {
+            setLoading(false);
+        }
       }
-      setLoading(false);
     };
     fetchLeaderboard();
+
+    return () => {
+        isMounted = false;
+    };
   }, [view]);
 
   return (

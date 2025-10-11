@@ -8,17 +8,27 @@ const AboutPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchCommittee = async () => {
       setLoading(true);
       try {
         const members = await getCommitteeMembers();
-        setCommittee(members);
+        if (isMounted) {
+            setCommittee(members);
+        }
       } catch (error) {
         console.error("Failed to fetch committee members:", error);
+      } finally {
+        if (isMounted) {
+            setLoading(false);
+        }
       }
-      setLoading(false);
     };
     fetchCommittee();
+
+    return () => {
+        isMounted = false;
+    };
   }, []);
 
   return (

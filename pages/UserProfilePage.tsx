@@ -30,6 +30,7 @@ const UserProfilePage: React.FC = () => {
   const isOwner = loggedInUserProfile?.uid === uid;
 
   useEffect(() => {
+    let isMounted = true;
     const fetchData = async () => {
       if (!uid) {
         navigate('/');
@@ -44,22 +45,32 @@ const UserProfilePage: React.FC = () => {
           isOwner ? getUsersPendingRequest(uid) : Promise.resolve(null),
         ]);
 
-        if (profile) {
-          setProfileData(profile);
-          setPosts(userPosts);
-          setPendingRequest(existingRequest);
-        } else {
-          setError('User profile not found.');
+        if (isMounted) {
+            if (profile) {
+              setProfileData(profile);
+              setPosts(userPosts);
+              setPendingRequest(existingRequest);
+            } else {
+              setError('User profile not found.');
+            }
         }
       } catch (err) {
-        console.error(err);
-        setError('Failed to load user data.');
+        if (isMounted) {
+            console.error(err);
+            setError('Failed to load user data.');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+            setLoading(false);
+        }
       }
     };
 
     fetchData();
+
+    return () => {
+        isMounted = false;
+    };
   }, [uid, navigate, isOwner]);
   
   const handleEditToggle = () => {
