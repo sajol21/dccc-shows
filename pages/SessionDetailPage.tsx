@@ -94,8 +94,10 @@ const SessionDetailPage: React.FC = () => {
                     <p>{session.description}</p>
                 </article>
 
-                {session.linkUrl && (
-                    <div className="text-center pt-8 border-t border-gray-700">
+                <div className="text-center pt-8 border-t border-gray-700">
+                    {session.status === 'completed' ? (
+                        <p className="font-semibold text-yellow-400 bg-yellow-900/50 py-3 px-6 rounded-lg">This session has already ended.</p>
+                    ) : session.linkUrl ? (
                         <a 
                             href={session.linkUrl} 
                             target="_blank" 
@@ -104,8 +106,8 @@ const SessionDetailPage: React.FC = () => {
                         >
                             Register or Learn More
                         </a>
-                    </div>
-                )}
+                    ) : null}
+                </div>
             </div>
         </div>
     );

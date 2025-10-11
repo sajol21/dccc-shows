@@ -290,6 +290,20 @@ export const deleteNotification = async (notificationId: string): Promise<void> 
     await deleteDoc(notificationRef);
 };
 
+export const clearAllNotifications = async (userId: string): Promise<void> => {
+  const q = query(collection(db, 'notifications'), where('userId', '==', userId));
+  const querySnapshot = await getDocs(q);
+  
+  if (querySnapshot.empty) return;
+
+  const batch = writeBatch(db);
+  querySnapshot.forEach(doc => {
+    batch.delete(doc.ref);
+  });
+  
+  await batch.commit();
+};
+
 export const onNotificationsUpdate = (userId: string, callback: (notifications: Notification[]) => void): Unsubscribe => {
     const q = query(
         collection(db, 'notifications'),
@@ -537,9 +551,10 @@ export const rejectPromotionRequest = async (requestId: string, userId: string):
 };
 
 // Session Management
-export const createSession = async (sessionData: Omit<Session, 'id' | 'createdAt'>): Promise<void> => {
+export const createSession = async (sessionData: Omit<Session, 'id' | 'createdAt' | 'status'>): Promise<void> => {
     await addDoc(collection(db, 'sessions'), {
         ...sessionData,
+        status: 'upcoming',
         createdAt: serverTimestamp(),
     });
     // Also create a global announcement for the session

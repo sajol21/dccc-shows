@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.js';
-import { logout, onAnnouncementsUpdate, markAnnouncementsAsRead, onNotificationsUpdate, markNotificationsAsRead, deleteNotification } from '../services/firebaseService.js';
+import { logout, onAnnouncementsUpdate, markAnnouncementsAsRead, onNotificationsUpdate, markNotificationsAsRead, deleteNotification, clearAllNotifications } from '../services/firebaseService.js';
 import { UserRole } from '../constants.js';
 import { Announcement, Notification as NotificationType } from '../types.js';
 import { Unsubscribe } from 'firebase/firestore';
@@ -81,6 +81,20 @@ const Header: React.FC = () => {
           if(unreadNotifIds.length > 0) await markNotificationsAsRead(userProfile.uid, unreadNotifIds);
           
           setUnreadCount(0); // Optimistically set to 0, profile listener will confirm
+      }
+  };
+
+  const handleClearAllNotifications = async () => {
+      if (window.confirm('Are you sure you want to delete ALL your personal notifications?')) {
+          try {
+              if (userProfile) {
+                  await clearAllNotifications(userProfile.uid);
+                  // The onSnapshot listener will handle the UI update automatically.
+              }
+          } catch (error) {
+              console.error("Failed to clear notifications:", error);
+              alert("Could not clear notifications. Please try again.");
+          }
       }
   };
 
@@ -188,6 +202,11 @@ const Header: React.FC = () => {
                                     {notifications.map(notif => (
                                         <NotificationItem key={notif.id} item={notif} isPersonal={true} />
                                     ))}
+                                    <div className="p-2 text-center border-t border-gray-700">
+                                        <button onClick={handleClearAllNotifications} className="text-xs text-red-400 hover:underline">
+                                            Clear All
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                             {announcements.length > 0 && (

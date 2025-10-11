@@ -364,6 +364,13 @@ const SessionManagementTab: React.FC<{ sessions: Session[], onUpdate: () => void
             onUpdate();
         }
     }
+    
+    const handleMarkCompleted = async (sessionId: string) => {
+        if (window.confirm('Are you sure you want to mark this session as completed?')) {
+            await updateSession(sessionId, { status: 'completed' });
+            onUpdate();
+        }
+    };
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -429,11 +436,14 @@ const SessionManagementTab: React.FC<{ sessions: Session[], onUpdate: () => void
                 <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                     {sessions.map(session => (
                         <div key={session.id} className="p-3 bg-gray-800 rounded-lg border border-gray-700">
-                            <p className="font-bold text-white">{session.title} <span className="text-xs font-normal text-gray-400">({session.type})</span></p>
+                            <p className="font-bold text-white">{session.title} <span className={`text-xs font-normal ${session.status === 'completed' ? 'text-yellow-400' : 'text-gray-400'}`}>({session.status || 'upcoming'})</span></p>
                             <p className="text-xs text-gray-400 text-right mt-1">{session.eventDate ? new Date(session.eventDate.toDate()).toLocaleString() : 'Date not set'}</p>
                             <div className="flex gap-2 mt-2">
                                 <button onClick={() => handleEditClick(session)} className="px-2 py-1 text-xs rounded bg-blue-600 hover:bg-blue-700 text-white">Edit</button>
                                 <button onClick={() => handleDelete(session.id)} className="px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-700 text-white">Delete</button>
+                                {session.status !== 'completed' && (
+                                    <button onClick={() => handleMarkCompleted(session.id)} className="px-2 py-1 text-xs rounded bg-green-600 hover:bg-green-700 text-white">Mark Completed</button>
+                                )}
                             </div>
                         </div>
                     ))}

@@ -5,7 +5,8 @@ import Spinner from '../components/Spinner.js';
 import SessionCard from '../components/SessionCard.js';
 
 const SessionsPage: React.FC = () => {
-    const [sessions, setSessions] = useState<Session[]>([]);
+    const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
+    const [pastSessions, setPastSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -17,7 +18,15 @@ const SessionsPage: React.FC = () => {
             try {
                 const sessionList = await getSessions();
                 if (isMounted) {
-                    setSessions(sessionList);
+                    const upcoming = sessionList
+                        .filter(s => s.status !== 'completed')
+                        .sort((a, b) => a.eventDate.toDate().getTime() - b.eventDate.toDate().getTime());
+                    const past = sessionList
+                        .filter(s => s.status === 'completed')
+                        .sort((a, b) => b.eventDate.toDate().getTime() - a.eventDate.toDate().getTime());
+                    
+                    setUpcomingSessions(upcoming);
+                    setPastSessions(past);
                 }
             } catch (err) {
                 if (isMounted) {
@@ -44,23 +53,40 @@ const SessionsPage: React.FC = () => {
 
     return (
         <div>
-            <div className="text-center mb-8">
-                <h1 className="text-4xl font-bold">Upcoming Sessions</h1>
-                <p className="text-gray-400 mt-2">Stay updated with our latest workshops, sessions, and meetups.</p>
-            </div>
-
             {loading ? (
                 <Spinner />
             ) : error ? (
                 <Alert message={error} />
-            ) : sessions.length === 0 ? (
-                <p className="text-center text-gray-500 mt-12">No upcoming sessions right now. Stay tuned!</p>
             ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {sessions.map(session => (
-                        <SessionCard key={session.id} session={session} />
-                    ))}
-                </div>
+                <>
+                    <div className="text-center mb-8">
+                        <h1 className="text-4xl font-bold">Upcoming Sessions</h1>
+                        <p className="text-gray-400 mt-2">Stay updated with our latest workshops, sessions, and meetups.</p>
+                    </div>
+                    {upcomingSessions.length > 0 ? (
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {upcomingSessions.map(session => (
+                                <SessionCard key={session.id} session={session} />
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-center text-gray-500 mt-12">No upcoming sessions right now. Stay tuned!</p>
+                    )}
+
+                    {pastSessions.length > 0 && (
+                        <>
+                            <div className="text-center mt-16 mb-8">
+                                <h2 className="text-3xl font-bold">Past Sessions</h2>
+                                <p className="text-gray-400 mt-2">An archive of our completed events.</p>
+                            </div>
+                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                {pastSessions.map(session => (
+                                    <SessionCard key={session.id} session={session} />
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </>
             )}
         </div>
     );

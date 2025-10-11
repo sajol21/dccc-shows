@@ -114,4 +114,5 @@ export interface Session {
   place?: string;
   eventDate: Timestamp;
   createdAt: Timestamp;
+  status?: 'upcoming' | 'completed';
 }
