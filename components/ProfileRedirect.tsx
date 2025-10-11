@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import Spinner from './Spinner';
+import { useAuth } from '../hooks/useAuth.js';
+import Spinner from './Spinner.js';
 
 const ProfileRedirect: React.FC = () => {
   const { currentUser, loading } = useAuth();

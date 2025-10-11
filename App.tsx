@@ -1,22 +1,22 @@
 import React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
-import Header from './components/Header';
-import Footer from './components/Footer';
-import HomePage from './pages/HomePage';
-import ShowsPage from './pages/ShowsPage';
-import LeaderboardPage from './pages/LeaderboardPage';
-import AboutPage from './pages/AboutPage';
-import LoginPage from './pages/LoginPage';
-import SignUpPage from './pages/SignUpPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import UserProfilePage from './pages/UserProfilePage';
-import AdminDashboard from './pages/AdminDashboard';
-import PostDetailPage from './pages/PostDetailPage';
-import ProtectedRoute from './components/ProtectedRoute';
-import AdminRoute from './components/AdminRoute';
-import ProfileRedirect from './components/ProfileRedirect';
-import VerifyEmailPage from './pages/VerifyEmailPage';
+import { AuthProvider } from './contexts/AuthContext.js';
+import Header from './components/Header.js';
+import Footer from './components/Footer.js';
+import HomePage from './pages/HomePage.js';
+import ShowsPage from './pages/ShowsPage.js';
+import LeaderboardPage from './pages/LeaderboardPage.js';
+import AboutPage from './pages/AboutPage.js';
+import LoginPage from './pages/LoginPage.js';
+import SignUpPage from './pages/SignUpPage.js';
+import ForgotPasswordPage from './pages/ForgotPasswordPage.js';
+import UserProfilePage from './pages/UserProfilePage.js';
+import AdminDashboard from './pages/AdminDashboard.js';
+import PostDetailPage from './pages/PostDetailPage.js';
+import ProtectedRoute from './components/ProtectedRoute.js';
+import AdminRoute from './components/AdminRoute.js';
+import ProfileRedirect from './components/ProfileRedirect.js';
+import VerifyEmailPage from './pages/VerifyEmailPage.js';
 
 const App: React.FC = () => {
   return (

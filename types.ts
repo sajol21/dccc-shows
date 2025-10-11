@@ -1,5 +1,5 @@
 import { Timestamp } from 'firebase/firestore';
-import { UserRole, Province } from './constants';
+import { UserRole, Province } from './constants.js';
 
 export interface UserProfile {
   uid: string;

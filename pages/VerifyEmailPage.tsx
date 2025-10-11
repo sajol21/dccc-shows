@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { resendVerificationEmail, logout } from '../services/firebaseService';
+import { useAuth } from '../hooks/useAuth.js';
+import { resendVerificationEmail, logout } from '../services/firebaseService.js';
 
 const VerifyEmailPage: React.FC = () => {
   const { currentUser } = useAuth();

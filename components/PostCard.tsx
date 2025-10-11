@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Post } from '../types';
-import { useAuth } from '../hooks/useAuth';
-import { toggleLikePost } from '../services/firebaseService';
-import RoleBadge from './RoleBadge';
+import { Post } from '../types.js';
+import { useAuth } from '../hooks/useAuth.js';
+import { toggleLikePost } from '../services/firebaseService.js';
+import RoleBadge from './RoleBadge.js';
 
 // Helper function to extract a YouTube thumbnail URL
 const getYouTubeThumbnail = (url: string | undefined): string | null => {
@@ -63,7 +63,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
                     )}
                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity duration-300">
                         <div className="w-14 h-14 bg-black/50 rounded-full flex items-center justify-center group-hover:bg-red-600 transition-colors">
-                           <svg xmlns="http://www.w.org/2000/svg" className="h-8 w-8 text-white" viewBox="0 0 20 20" fill="currentColor">
+                           <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" viewBox="0 0 20 20" fill="currentColor">
                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
                            </svg>
                         </div>

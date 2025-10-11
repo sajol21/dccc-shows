@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserRole } from '../constants';
+import { UserRole } from '../constants.js';
 
 const RoleBadge: React.FC<{ role: UserRole }> = ({ role }) => {
   const getRoleClass = () => {

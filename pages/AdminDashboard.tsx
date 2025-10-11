@@ -1,6 +1,6 @@
 import React, { useState, useEffect, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { UserProfile, Post, SiteConfig, Announcement, PromotionRequest } from '../types';
+import { UserProfile, Post, SiteConfig, Announcement, PromotionRequest } from '../types.js';
 import { 
   getAllUsers, 
   updateUserRole, 
@@ -15,9 +15,9 @@ import {
   getPendingPromotionRequests,
   approvePromotionRequest,
   rejectPromotionRequest
-} from '../services/firebaseService';
-import { USER_ROLES, UserRole } from '../constants';
-import Spinner from '../components/Spinner';
+} from '../services/firebaseService.js';
+import { USER_ROLES, UserRole } from '../constants.js';
+import Spinner from '../components/Spinner.js';
 
 type Tab = 'dashboard' | 'users' | 'posts' | 'promotions' | 'announcements' | 'settings';
 

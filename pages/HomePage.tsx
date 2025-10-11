@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getPosts, getLeaderboardUsers, getSiteConfig } from '../services/firebaseService';
-import { Post, UserProfile, SiteConfig } from '../types';
-import PostCard from '../components/PostCard';
-import Spinner from '../components/Spinner';
+import { getPosts, getLeaderboardUsers, getSiteConfig } from '../services/firebaseService.js';
+import { Post, UserProfile, SiteConfig } from '../types.js';
+import PostCard from '../components/PostCard.js';
+import Spinner from '../components/Spinner.js';
 
 const HomePage: React.FC = () => {
   const [latestPosts, setLatestPosts] = useState<Post[]>([]);

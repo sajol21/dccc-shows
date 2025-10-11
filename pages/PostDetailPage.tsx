@@ -1,13 +1,13 @@
 import React, { useEffect, useState, FormEvent } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { getPost, addSuggestion, toggleLikePost, deletePost, updatePost } from '../services/firebaseService';
-import { Post } from '../types';
-import { PROVINCES, UserRole } from '../constants';
-import { useAuth } from '../hooks/useAuth';
-import Spinner from '../components/Spinner';
-import Modal from '../components/Modal';
-import RoleBadge from '../components/RoleBadge';
-import { db } from '../config/firebase';
+import { getPost, addSuggestion, toggleLikePost, deletePost, updatePost } from '../services/firebaseService.js';
+import { Post } from '../types.js';
+import { PROVINCES, UserRole } from '../constants.js';
+import { useAuth } from '../hooks/useAuth.js';
+import Spinner from '../components/Spinner.js';
+import Modal from '../components/Modal.js';
+import RoleBadge from '../components/RoleBadge.js';
+import { db } from '../config/firebase.js';
 import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
 
 const getEmbedUrl = (url: string | undefined): string => {

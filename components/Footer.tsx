@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getSiteConfig } from '../services/firebaseService';
-import { SiteConfig } from '../types';
+import { getSiteConfig } from '../services/firebaseService.js';
+import { SiteConfig } from '../types.js';
 
 const Footer: React.FC = () => {
     const [config, setConfig] = useState<SiteConfig | null>(null);

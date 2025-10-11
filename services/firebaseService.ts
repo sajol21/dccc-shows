@@ -1,9 +1,9 @@
 import { 
   doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion, arrayRemove, Timestamp, onSnapshot, Unsubscribe
 } from 'firebase/firestore';
-import { db, storage, auth } from '../config/firebase';
-import { UserProfile, Post, Suggestion, PromotionRequest, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement, Notification } from '../types';
-import { UserRole, Province, LEADERBOARD_ROLES } from '../constants';
+import { db, storage, auth } from '../config/firebase.js';
+import { UserProfile, Post, Suggestion, PromotionRequest, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement, Notification } from '../types.js';
+import { UserRole, Province, LEADERBOARD_ROLES } from '../constants.js';
 import { signOut, GoogleAuthProvider, signInWithPopup, sendEmailVerification } from 'firebase/auth';
 
 // User Management

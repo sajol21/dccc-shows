@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../config/firebase';
-import { signInWithGoogle } from '../services/firebaseService';
+import { auth } from '../config/firebase.js';
+import { signInWithGoogle } from '../services/firebaseService.js';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');

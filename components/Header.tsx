@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { logout, onAnnouncementsUpdate, markAnnouncementsAsRead, onNotificationsUpdate, markNotificationsAsRead } from '../services/firebaseService';
-import { UserRole } from '../constants';
-import { Announcement, Notification as NotificationType } from '../types';
+import { useAuth } from '../hooks/useAuth.js';
+import { logout, onAnnouncementsUpdate, markAnnouncementsAsRead, onNotificationsUpdate, markNotificationsAsRead } from '../services/firebaseService.js';
+import { UserRole } from '../constants.js';
+import { Announcement, Notification as NotificationType } from '../types.js';
 import { Unsubscribe } from 'firebase/firestore';
 
 const Header: React.FC = () => {

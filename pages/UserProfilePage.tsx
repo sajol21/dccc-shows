@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { getUserProfile, updateUserProfile, getPostsByAuthor, createPromotionRequest, getUsersPendingRequest } from '../services/firebaseService';
-import { Province, PROVINCES, UserRole } from '../constants';
-import { UserProfile, Post, PromotionRequest } from '../types';
-import Spinner from '../components/Spinner';
-import PostCard from '../components/PostCard';
+import { useAuth } from '../hooks/useAuth.js';
+import { getUserProfile, updateUserProfile, getPostsByAuthor, createPromotionRequest, getUsersPendingRequest } from '../services/firebaseService.js';
+import { Province, PROVINCES, UserRole } from '../constants.js';
+import { UserProfile, Post, PromotionRequest } from '../types.js';
+import Spinner from '../components/Spinner.js';
+import PostCard from '../components/PostCard.js';
 
 const NEXT_ROLE_MAP: Partial<Record<UserRole, UserRole>> = {
     [UserRole.GENERAL_STUDENT]: UserRole.GENERAL_MEMBER,

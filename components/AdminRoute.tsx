@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { UserRole } from '../constants';
-import Spinner from './Spinner';
+import { useAuth } from '../hooks/useAuth.js';
+import { UserRole } from '../constants.js';
+import Spinner from './Spinner.js';
 
 const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { userProfile, loading } = useAuth();

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getPosts, createPost, getSiteConfig, getFeaturedPosts } from '../services/firebaseService';
-import { Post, SiteConfig } from '../types';
-import { Province, UserRole, PROVINCES, USER_ROLES, ROLE_HIERARCHY, LEADERBOARD_ROLES } from '../constants';
-import PostCard from '../components/PostCard';
-import Spinner from '../components/Spinner';
-import { useAuth } from '../hooks/useAuth';
-import Modal from '../components/Modal';
+import { getPosts, createPost, getSiteConfig, getFeaturedPosts } from '../services/firebaseService.js';
+import { Post, SiteConfig } from '../types.js';
+import { Province, UserRole, PROVINCES, USER_ROLES, ROLE_HIERARCHY, LEADERBOARD_ROLES } from '../constants.js';
+import PostCard from '../components/PostCard.js';
+import Spinner from '../components/Spinner.js';
+import { useAuth } from '../hooks/useAuth.js';
+import Modal from '../components/Modal.js';
 import { DocumentSnapshot } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { getLeaderboardUsers, getLeaderboardArchives, getArchivedLeaderboard } from '../services/firebaseService';
-import { UserProfile, LeaderboardArchive, ArchivedUser } from '../types';
-import Spinner from '../components/Spinner';
-import RoleBadge from '../components/RoleBadge';
+import { getLeaderboardUsers, getLeaderboardArchives, getArchivedLeaderboard } from '../services/firebaseService.js';
+import { UserProfile, LeaderboardArchive, ArchivedUser } from '../types.js';
+import Spinner from '../components/Spinner.js';
+import RoleBadge from '../components/RoleBadge.js';
 
 type LeaderboardView = 'current' | string; // 'current' or an archive ID like '2024-07'
 

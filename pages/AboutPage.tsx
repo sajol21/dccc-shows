@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { UserProfile } from '../types';
-import { getCommitteeMembers } from '../services/firebaseService';
-import Spinner from '../components/Spinner';
+import { UserProfile } from '../types.js';
+import { getCommitteeMembers } from '../services/firebaseService.js';
+import Spinner from '../components/Spinner.js';
 
 const AboutPage: React.FC = () => {
   const [committee, setCommittee] = useState<UserProfile[]>([]);

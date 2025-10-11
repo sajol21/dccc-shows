@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
-import { auth } from '../config/firebase';
-import { createUserProfile, signInWithGoogle } from '../services/firebaseService';
+import { auth } from '../config/firebase.js';
+import { createUserProfile, signInWithGoogle } from '../services/firebaseService.js';
 
 const SignUpPage: React.FC = () => {
   const [name, setName] = useState('');
