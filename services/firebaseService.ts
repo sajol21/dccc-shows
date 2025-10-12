@@ -168,13 +168,16 @@ export const getPostsByAuthor = async (authorId: string): Promise<Post[]> => {
 export const toggleLikePost = async (postId: string, userId: string): Promise<void> => {
     const postRef = doc(db, 'posts', postId);
     const postSnap = await getDoc(postRef);
-    if (!postSnap.exists()) return;
+
+    if (!postSnap.exists()) {
+        throw new Error("Post not found");
+    }
 
     const post = postSnap.data() as Post;
-    const currentLikes = post.likes || [];
-    const isLiked = currentLikes.includes(userId);
+    const isLiked = (post.likes || []).includes(userId);
 
-    // Only update the post document, removing the insecure cross-user profile update that was causing permission errors.
+    // Only update the post document to prevent permission errors.
+    // User stats will be recalculated on their next profile visit.
     await updateDoc(postRef, { 
         likes: isLiked ? arrayRemove(userId) : arrayUnion(userId) 
     });
@@ -185,8 +188,11 @@ export const toggleLikePost = async (postId: string, userId: string): Promise<vo
 export const addSuggestion = async (postId: string, suggestionData: Omit<Suggestion, 'timestamp'>): Promise<void> => {
     const postRef = doc(db, 'posts', postId);
     const postSnap = await getDoc(postRef);
-    if (!postSnap.exists()) return;
 
+    if (!postSnap.exists()) {
+        throw new Error("Post not found");
+    }
+    
     const post = postSnap.data() as Post;
     
     const newSuggestion: Suggestion = {
@@ -194,48 +200,54 @@ export const addSuggestion = async (postId: string, suggestionData: Omit<Suggest
       timestamp: Timestamp.now()
     };
     
-    // Update the post document with the new suggestion. This is secure.
-    await updateDoc(postRef, {
+    const batch = writeBatch(db);
+    
+    // 1. Update the post with the new suggestion. This is secure.
+    batch.update(postRef, {
       suggestions: arrayUnion(newSuggestion)
     });
 
-    // Send a notification, but do not update the author's score from the client.
-    // The score can be updated by the author on their profile page.
+    // 2. Create a notification for the author. This is secure.
     if (post.authorId !== suggestionData.commenterId) {
-        await createNotification(
-            post.authorId,
-            "New suggestion on your show!",
-            `${suggestionData.commenterName} left a suggestion on "${post.title}".`,
-            `/post/${postId}`
-        );
+        const notificationRef = doc(collection(db, 'notifications'));
+        batch.set(notificationRef, {
+            userId: post.authorId,
+            title: "New suggestion on your show!",
+            body: `${suggestionData.commenterName} left a suggestion on "${post.title}".`,
+            link: `/post/${postId}`,
+            read: false,
+            createdAt: serverTimestamp(),
+        });
     }
+    
+    await batch.commit();
 };
 
-// New function to allow users to securely update their own stats.
 export const recalculateUserStats = async (userId: string): Promise<void> => {
-    // 1. Fetch all posts by the user.
-    const q = query(collection(db, 'posts'), where('authorId', '==', userId));
-    const querySnapshot = await getDocs(q);
-    const posts = querySnapshot.docs.map(doc => doc.data() as Post);
-
-    // 2. Calculate totals from the posts.
+    // 1. Get all posts by the user
+    const postsQuery = query(collection(db, 'posts'), where('authorId', '==', userId));
+    const postsSnapshot = await getDocs(postsQuery);
+    
     let totalLikes = 0;
     let totalSuggestions = 0;
-    posts.forEach(post => {
-        totalLikes += post.likes?.length || 0;
-        // Don't count user's own suggestions towards their score.
-        totalSuggestions += post.suggestions?.filter(s => s.commenterId !== userId).length || 0;
+
+    // 2. Iterate over posts and sum up stats
+    postsSnapshot.forEach(doc => {
+        const post = doc.data() as Post;
+        totalLikes += (post.likes || []).length;
+        totalSuggestions += (post.suggestions || []).length;
     });
 
-    // 3. Calculate leaderboard score. (1 point per like, 5 per suggestion)
     const leaderboardScore = totalLikes + (totalSuggestions * 5);
+    const submissionsCount = postsSnapshot.size;
 
-    // 4. Update the user's profile document.
+    // 3. Update the user's own profile. This is a secure operation.
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, {
         totalLikes,
         totalSuggestions,
-        leaderboardScore
+        leaderboardScore,
+        submissionsCount // Also keep this in sync
     });
 };
 
@@ -357,7 +369,7 @@ export const clearAllNotifications = async (userId: string): Promise<void> => {
 };
 
 export const getCommitteeMembers = async (): Promise<UserProfile[]> => {
-    const committeeRoles = [UserRole.EXECUTIVE_MEMBER, UserRole.ADMIN, UserRole.LIFETIME_MEMBER];
+    const committeeRoles = [UserRole.EXECUTIVE_MEMBER, UserRole.ADMIN];
     const q = query(collection(db, 'users'), where('role', 'in', committeeRoles));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => doc.data() as UserProfile);

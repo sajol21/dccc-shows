@@ -28,7 +28,6 @@ const UserProfilePage: React.FC = () => {
   const [status, setStatus] = useState('');
   const [pendingRequest, setPendingRequest] = useState<PromotionRequest | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
-  const [recalculating, setRecalculating] = useState(false);
   
   const isOwner = loggedInUserProfile?.uid === uid;
 
@@ -42,6 +41,13 @@ const UserProfilePage: React.FC = () => {
       setLoading(true);
       setError('');
       try {
+        // Securely recalculate stats for the owner on page load to keep them fresh.
+        if (isOwner) {
+            await recalculateUserStats(uid).catch(err => {
+                console.warn("Could not recalculate user stats:", err);
+            });
+        }
+        
         const [profileResult, postsResult, requestResult] = await Promise.allSettled([
           getUserProfile(uid),
           getPostsByAuthor(uid),
@@ -61,10 +67,12 @@ const UserProfilePage: React.FC = () => {
             } else {
               console.error('Failed to fetch user posts:', postsResult.reason);
             }
+            // Silently handle permission errors for pending requests.
             if (requestResult.status === 'fulfilled') {
               setPendingRequest(requestResult.value);
             } else {
-              console.error('Failed to fetch pending requests:', requestResult.reason);
+              console.warn('Could not fetch pending promotion requests, likely due to Firestore permissions. The promotion button might be incorrectly displayed if a request is already pending.');
+              setPendingRequest(null);
             }
         }
       } catch (err) {
@@ -79,12 +87,14 @@ const UserProfilePage: React.FC = () => {
       }
     };
 
-    fetchData();
+    if (!authLoading) {
+      fetchData();
+    }
 
     return () => {
         isMounted = false;
     };
-  }, [uid, navigate, isOwner]);
+  }, [uid, navigate, isOwner, authLoading]);
   
   const handleEditToggle = () => {
     if (!isEditing && profileData) {
@@ -133,23 +143,6 @@ const UserProfilePage: React.FC = () => {
             console.error(err);
             alert('Failed to submit promotion request.');
         }
-    }
-  };
-  
-  const handleRecalculateStats = async () => {
-    if (!uid) return;
-    setRecalculating(true);
-    setStatus('Recalculating stats...');
-    try {
-      await recalculateUserStats(uid);
-      // The profile data will refresh automatically via the onSnapshot listener from AuthContext.
-      setStatus('Your stats have been refreshed!');
-    } catch (error) {
-      console.error("Failed to recalculate stats:", error);
-      setStatus('An error occurred while refreshing stats.');
-    } finally {
-      setRecalculating(false);
-      setTimeout(() => setStatus(''), 3000); // Clear status message
     }
   };
 
@@ -305,16 +298,6 @@ const UserProfilePage: React.FC = () => {
                               <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
                                   Save Changes
                               </button>
-                          )}
-                          {!isEditing && (
-                            <button
-                                type="button"
-                                onClick={handleRecalculateStats}
-                                disabled={recalculating}
-                                className="px-4 py-2 bg-indigo-600 rounded-md hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-wait"
-                            >
-                                {recalculating ? 'Refreshing...' : 'Refresh My Stats'}
-                            </button>
                           )}
                           {canRequestPromotion && (
                               <button type="button" onClick={handlePromotionRequest} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
