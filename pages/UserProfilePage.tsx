@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
-import { getUserProfile, updateUserProfile, getPostsByAuthor, createPromotionRequest, getUsersPendingRequest } from '../services/firebaseService.js';
+import { getUserProfile, updateUserProfile, getPostsByAuthor, createPromotionRequest, getUsersPendingRequest, recalculateUserStats } from '../services/firebaseService.js';
 import { Province, PROVINCES, UserRole } from '../constants.js';
 import { UserProfile, Post, PromotionRequest } from '../types.js';
 import PostCard from '../components/PostCard.js';
@@ -28,6 +28,7 @@ const UserProfilePage: React.FC = () => {
   const [status, setStatus] = useState('');
   const [pendingRequest, setPendingRequest] = useState<PromotionRequest | null>(null);
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
+  const [recalculating, setRecalculating] = useState(false);
   
   const isOwner = loggedInUserProfile?.uid === uid;
 
@@ -132,6 +133,23 @@ const UserProfilePage: React.FC = () => {
             console.error(err);
             alert('Failed to submit promotion request.');
         }
+    }
+  };
+  
+  const handleRecalculateStats = async () => {
+    if (!uid) return;
+    setRecalculating(true);
+    setStatus('Recalculating stats...');
+    try {
+      await recalculateUserStats(uid);
+      // The profile data will refresh automatically via the onSnapshot listener from AuthContext.
+      setStatus('Your stats have been refreshed!');
+    } catch (error) {
+      console.error("Failed to recalculate stats:", error);
+      setStatus('An error occurred while refreshing stats.');
+    } finally {
+      setRecalculating(false);
+      setTimeout(() => setStatus(''), 3000); // Clear status message
     }
   };
 
@@ -288,6 +306,16 @@ const UserProfilePage: React.FC = () => {
                                   Save Changes
                               </button>
                           )}
+                          {!isEditing && (
+                            <button
+                                type="button"
+                                onClick={handleRecalculateStats}
+                                disabled={recalculating}
+                                className="px-4 py-2 bg-indigo-600 rounded-md hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-wait"
+                            >
+                                {recalculating ? 'Refreshing...' : 'Refresh My Stats'}
+                            </button>
+                          )}
                           {canRequestPromotion && (
                               <button type="button" onClick={handlePromotionRequest} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
                                   Request Promotion to {NEXT_ROLE_MAP[profileData.role]}
@@ -298,7 +326,7 @@ const UserProfilePage: React.FC = () => {
                           )}
                       </div>
                     )}
-                     {status && <p className={`mt-4 text-center text-sm ${status.startsWith('Failed') ? 'text-red-400' : 'text-green-400'}`}>{status}</p>}
+                     {status && <p className={`mt-4 text-center text-sm ${status.includes('Failed') || status.includes('error') ? 'text-red-400' : 'text-green-400'}`}>{status}</p>}
                 </form>
             </div>
         </div>

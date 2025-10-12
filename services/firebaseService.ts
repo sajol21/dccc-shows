@@ -1,7 +1,8 @@
 import { 
   doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion, arrayRemove, Timestamp, onSnapshot, Unsubscribe
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+// fix: Added deleteObject for cleaning up storage on post deletion.
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage, auth } from '../config/firebase.js';
 import { UserProfile, Post, Suggestion, PromotionRequest, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement, Notification, Session } from '../types.js';
 import { UserRole, Province, LEADERBOARD_ROLES } from '../constants.js';
@@ -293,4 +294,253 @@ export const updateSiteConfig = async (data: Partial<SiteConfig>): Promise<void>
 // Announcements & Notifications
 const createNotification = async (userId: string, title: string, body: string, link: string = ''): Promise<void> => {
     await addDoc(collection(db, 'notifications'), {
-        userId
+        userId,
+        title,
+        body,
+        link,
+        read: false,
+        createdAt: serverTimestamp(),
+    });
+};
+
+// fix: Added all missing functions to resolve export errors.
+export const onAnnouncementsUpdate = (callback: (announcements: Announcement[]) => void): Unsubscribe => {
+    const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(10));
+    return onSnapshot(q, (querySnapshot) => {
+        const announcements = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement));
+        callback(announcements);
+    });
+};
+
+export const markAnnouncementsAsRead = async (userId: string, announcementIds: string[]): Promise<void> => {
+    if (announcementIds.length === 0) return;
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+        readAnnouncements: arrayUnion(...announcementIds)
+    });
+};
+
+export const onNotificationsUpdate = (userId: string, callback: (notifications: Notification[]) => void): Unsubscribe => {
+    const q = query(
+        collection(db, 'notifications'),
+        where('userId', '==', userId),
+        orderBy('createdAt', 'desc'),
+        limit(20)
+    );
+    return onSnapshot(q, (querySnapshot) => {
+        const notifications = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+        callback(notifications);
+    });
+};
+
+export const markNotificationsAsRead = async (userId: string, notificationIds: string[]): Promise<void> => {
+    if (notificationIds.length === 0) return;
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+        readNotifications: arrayUnion(...notificationIds)
+    });
+};
+
+export const deleteNotification = async (notificationId: string): Promise<void> => {
+    const notifRef = doc(db, 'notifications', notificationId);
+    await deleteDoc(notifRef);
+};
+
+export const clearAllNotifications = async (userId: string): Promise<void> => {
+    const q = query(collection(db, 'notifications'), where('userId', '==', userId));
+    const querySnapshot = await getDocs(q);
+    const batch = writeBatch(db);
+    querySnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+    await batch.commit();
+};
+
+export const getCommitteeMembers = async (): Promise<UserProfile[]> => {
+    const committeeRoles = [UserRole.EXECUTIVE_MEMBER, UserRole.ADMIN, UserRole.LIFETIME_MEMBER];
+    const q = query(collection(db, 'users'), where('role', 'in', committeeRoles));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => doc.data() as UserProfile);
+}
+
+export const deletePost = async (post: Post): Promise<void> => {
+    const batch = writeBatch(db);
+    const postRef = doc(db, 'posts', post.id);
+    batch.delete(postRef);
+
+    const userRef = doc(db, 'users', post.authorId);
+    batch.update(userRef, {
+        submissionsCount: increment(-1)
+    });
+
+    if (post.mediaURL && post.mediaURL.includes('firebasestorage.googleapis.com')) {
+        try {
+            const fileRef = ref(storage, post.mediaURL);
+            await deleteObject(fileRef);
+        } catch (error: any) {
+            if (error.code !== 'storage/object-not-found') {
+                console.error("Error deleting file from storage:", error);
+            }
+        }
+    }
+    
+    await batch.commit();
+};
+
+export const getAllUsers = async (): Promise<UserProfile[]> => {
+    const querySnapshot = await getDocs(collection(db, 'users'));
+    return querySnapshot.docs.map(doc => doc.data() as UserProfile);
+};
+
+export const updateUserRole = async (uid: string, role: UserRole): Promise<void> => {
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, { role });
+};
+
+export const getAllPostsAdmin = async (): Promise<Post[]> => {
+    const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+};
+
+export const approvePost = async (postId: string, approved: boolean): Promise<void> => {
+    const postRef = doc(db, 'posts', postId);
+    await updateDoc(postRef, { approved });
+};
+
+export const resetLeaderboard = async (): Promise<void> => {
+    const batch = writeBatch(db);
+    const q = query(collection(db, 'users'), where('role', 'in', LEADERBOARD_ROLES));
+    const usersSnapshot = await getDocs(q);
+    
+    const archivedUsers: ArchivedUser[] = [];
+    usersSnapshot.forEach(userDoc => {
+        const user = userDoc.data() as UserProfile;
+        archivedUsers.push({
+            uid: user.uid,
+            name: user.name,
+            batch: user.batch,
+            role: user.role,
+            leaderboardScore: user.leaderboardScore,
+        });
+        batch.update(userDoc.ref, {
+            leaderboardScore: 0,
+            totalLikes: 0,
+            totalSuggestions: 0,
+        });
+    });
+
+    const archiveId = new Date().toISOString().slice(0, 7);
+    const archiveRef = doc(db, 'leaderboard_archives', archiveId);
+    batch.set(archiveRef, {
+        id: archiveId,
+        createdAt: serverTimestamp(),
+        users: archivedUsers,
+    });
+
+    await batch.commit();
+};
+
+export const createAnnouncement = async (title: string, body: string): Promise<void> => {
+    await addDoc(collection(db, 'announcements'), {
+        title,
+        body,
+        createdAt: serverTimestamp()
+    });
+};
+
+export const getAnnouncements = async (): Promise<Announcement[]> => {
+    const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement));
+};
+
+export const getPendingPromotionRequests = async (): Promise<PromotionRequest[]> => {
+    const q = query(collection(db, 'promotion_requests'), where('status', '==', 'pending'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PromotionRequest));
+};
+
+export const approvePromotionRequest = async (requestId: string, userId: string, requestedRole: UserRole): Promise<void> => {
+    const batch = writeBatch(db);
+    const requestRef = doc(db, 'promotion_requests', requestId);
+    batch.update(requestRef, { status: 'approved' });
+    const userRef = doc(db, 'users', userId);
+    batch.update(userRef, { role: requestedRole });
+    await batch.commit();
+    await createNotification(userId, "Promotion Approved!", `Congratulations! You have been promoted to ${requestedRole}.`, `/user/${userId}`);
+};
+
+export const rejectPromotionRequest = async (requestId: string, userId: string): Promise<void> => {
+    const requestRef = doc(db, 'promotion_requests', requestId);
+    await updateDoc(requestRef, { status: 'rejected' });
+    await createNotification(userId, "Promotion Request Update", "Your recent promotion request was not approved at this time. Keep up the great work!");
+};
+
+export const createPromotionRequest = async (user: UserProfile, requestedRole: UserRole): Promise<void> => {
+    await addDoc(collection(db, 'promotion_requests'), {
+        userId: user.uid,
+        userName: user.name,
+        userBatch: user.batch,
+        currentRole: user.role,
+        requestedRole: requestedRole,
+        status: 'pending',
+        createdAt: serverTimestamp()
+    });
+};
+
+export const getUsersPendingRequest = async (userId: string): Promise<PromotionRequest | null> => {
+    const q = query(
+        collection(db, 'promotion_requests'),
+        where('userId', '==', userId),
+        where('status', '==', 'pending'),
+        limit(1)
+    );
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) {
+        return null;
+    }
+    return { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as PromotionRequest;
+};
+
+export const getSessions = async (): Promise<Session[]> => {
+    const q = query(collection(db, 'sessions'), orderBy('eventDate', 'desc'));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Session));
+};
+
+export const getSession = async (sessionId: string): Promise<Session | null> => {
+    const docRef = doc(db, 'sessions', sessionId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as Session;
+    }
+    return null;
+};
+
+export const createSession = async (sessionData: Omit<Session, 'id' | 'createdAt' | 'status'>): Promise<void> => {
+    const batch = writeBatch(db);
+    const newSessionRef = doc(collection(db, 'sessions'));
+    batch.set(newSessionRef, {
+        ...sessionData,
+        createdAt: serverTimestamp(),
+        status: 'upcoming'
+    });
+    const announcementRef = doc(collection(db, 'announcements'));
+    batch.set(announcementRef, {
+        title: `New ${sessionData.type}: ${sessionData.title}`,
+        body: `Join us for our upcoming ${sessionData.type}! Check the sessions page for more details.`,
+        createdAt: serverTimestamp()
+    });
+    await batch.commit();
+};
+
+export const updateSession = async (sessionId: string, data: Partial<Session>): Promise<void> => {
+    const sessionRef = doc(db, 'sessions', sessionId);
+    await updateDoc(sessionRef, data);
+};
+
+export const deleteSession = async (sessionId: string): Promise<void> => {
+    const sessionRef = doc(db, 'sessions', sessionId);
+    await deleteDoc(sessionRef);
+};
