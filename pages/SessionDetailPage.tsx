@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getSession } from '../services/firebaseService.js';
 import { Session } from '../types.js';
-import Spinner from '../components/Spinner.js';
 
 const InfoBlock: React.FC<{ icon: React.ReactNode, title: string, value: string }> = ({ icon, title, value }) => (
     <div className="flex items-center gap-4 p-2">
@@ -53,14 +52,37 @@ const SessionDetailPage: React.FC = () => {
         return () => { isMounted = false; };
     }, [id]);
 
-    if (loading) return <Spinner />;
+    if (loading) {
+        return (
+            <div className="bg-gray-900/80 backdrop-blur-lg rounded-xl border border-gray-700 shadow-xl overflow-hidden max-w-4xl mx-auto animate-pulse">
+                <div className="aspect-video bg-gray-700"></div>
+                <div className="p-6 md:p-10">
+                    <div className="h-8 bg-gray-700 rounded w-3/4 mb-2"></div>
+                    <div className="h-5 bg-gray-700 rounded w-1/4 mb-8"></div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-8 p-4 bg-black/20 rounded-lg border border-gray-700">
+                        <div className="h-16 bg-gray-700 rounded"></div>
+                        <div className="h-16 bg-gray-700 rounded"></div>
+                        <div className="h-16 bg-gray-700 rounded"></div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className="h-4 bg-gray-700 rounded w-full"></div>
+                        <div className="h-4 bg-gray-700 rounded w-full"></div>
+                        <div className="h-4 bg-gray-700 rounded w-5/6"></div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     if (error) return <p className="text-center text-red-400 bg-red-900/50 p-3 rounded-md">{error}</p>;
     if (!session) return null;
     
     const eventDate = session.eventDate ? new Date(session.eventDate.toDate()) : null;
 
     return (
-        <div className="bg-gray-900/80 backdrop-blur-lg rounded-xl border border-gray-700 shadow-xl overflow-hidden max-w-4xl mx-auto">
+        <div className="bg-gray-900/80 backdrop-blur-lg rounded-xl border border-gray-700 shadow-xl overflow-hidden max-w-4xl mx-auto animate-fade-in">
             <div className="bg-black">
                 <img src={session.bannerUrl} alt={session.title} className="w-full aspect-video object-cover" />
             </div>

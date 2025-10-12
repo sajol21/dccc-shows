@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Post } from '../types.js';
 import { useAuth } from '../contexts/AuthContext.js';
 import { toggleLikePost } from '../services/firebaseService.js';
 import RoleBadge from './RoleBadge.js';
 
-// Helper function to extract a YouTube thumbnail URL
-const getYouTubeThumbnail = (url: string | undefined): string | null => {
+// Helper function to extract a video thumbnail URL
+const getVideoThumbnail = (url: string | undefined): string | null => {
     if (!url) return null;
     let videoId: string | null = null;
     try {
@@ -15,13 +15,21 @@ const getYouTubeThumbnail = (url: string | undefined): string | null => {
         } else if (url.includes('youtu.be/')) {
             videoId = new URL(url).pathname.split('/').pop() || null;
         }
+
+        if (videoId) {
+            return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        }
+
+        if (url.includes('facebook.com/') || url.includes('fb.watch')) {
+            return 'facebook_video'; // Special key for FB videos
+        }
     } catch (e) {
-        console.error("Could not parse YouTube URL for thumbnail", e);
+        console.error("Could not parse video URL for thumbnail", e);
         return null;
     }
-
-    return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null;
+    return null;
 };
+
 
 const TypeIcon: React.FC<{ type: 'Text' | 'Image' | 'Video' }> = ({ type }) => {
     let icon;
@@ -47,6 +55,10 @@ const TypeIcon: React.FC<{ type: 'Text' | 'Image' | 'Video' }> = ({ type }) => {
 const PostCard: React.FC<{ post: Post }> = ({ post }) => {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
+    const [isExpanded, setIsExpanded] = useState(false);
+    const TRUNCATE_LENGTH = 150;
+    const isLongText = post.description.length > TRUNCATE_LENGTH;
+
     const isLiked = currentUser && post.likes ? post.likes.includes(currentUser.uid) : false;
 
     const handleLike = async (e: React.MouseEvent) => {
@@ -65,7 +77,13 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
       navigate(`/user/${post.authorId}`);
     };
 
-    const videoThumbnailUrl = getYouTubeThumbnail(post.mediaURL);
+    const handleReadMoreToggle = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsExpanded(!isExpanded);
+    };
+
+    const videoThumbnailUrl = getVideoThumbnail(post.mediaURL);
 
     return (
         <Link to={`/post/${post.id}`} className="group relative block bg-black/20 backdrop-blur-lg rounded-xl border border-white/10 shadow-lg hover:shadow-xl hover:shadow-blue-500/10 hover:border-blue-400 transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
@@ -77,7 +95,11 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
             )}
             {(post.type === 'Video') && (
                 <div className="overflow-hidden aspect-video bg-black relative">
-                    {videoThumbnailUrl ? (
+                    {videoThumbnailUrl === 'facebook_video' ? (
+                        <div className="w-full h-full bg-[#1877F2] flex items-center justify-center text-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="currentColor" viewBox="0 0 24 24"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/></svg>
+                        </div>
+                    ) : videoThumbnailUrl ? (
                         <img src={videoThumbnailUrl} alt={`${post.title} thumbnail`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     ) : (
                         <div className="w-full h-full bg-black flex items-center justify-center text-gray-500">No thumbnail</div>
@@ -92,8 +114,23 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
                 </div>
             )}
              {post.type === 'Text' && (
-                <div className="aspect-video bg-gray-800 flex items-center justify-center p-4">
-                     <p className="text-gray-400 text-sm line-clamp-4">{post.description}</p>
+                <div className="aspect-video bg-gray-800 flex flex-col p-4 overflow-hidden">
+                    <div 
+                        className="overflow-hidden transition-all duration-500 ease-in-out"
+                        style={{ maxHeight: isExpanded ? '1000px' : '90px' }} // 90px is approx 4 lines
+                    >
+                        <p className="text-gray-400 text-sm">
+                            {post.description}
+                        </p>
+                    </div>
+                    {isLongText && (
+                        <button 
+                            onClick={handleReadMoreToggle}
+                            className="text-blue-400 hover:underline text-sm font-semibold mt-2 self-start flex-shrink-0"
+                        >
+                            {isExpanded ? 'Read Less' : 'Read More'}
+                        </button>
+                    )}
                 </div>
             )}
             <div className="p-5">

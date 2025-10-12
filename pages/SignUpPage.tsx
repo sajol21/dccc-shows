@@ -57,8 +57,17 @@ const SignUpPage: React.FC = () => {
     }
   };
 
+  const handleBatchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow only up to 2 digits
+    if (/^\d{0,2}$/.test(value)) {
+      setBatch(value);
+    }
+  };
+
+
   return (
-    <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 animate-fade-in">
       <div className="max-w-md w-full space-y-8 p-10 bg-gray-900/70 backdrop-blur-lg border border-gray-700 shadow-xl rounded-2xl">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-100">
@@ -87,7 +96,7 @@ const SignUpPage: React.FC = () => {
               <input name="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required className="appearance-none relative block w-full px-3 py-3 border border-gray-700 bg-gray-800/50 placeholder-gray-500 text-gray-200 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Phone Number" />
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">HSC -</span>
-                <input name="batch" type="text" value={batch} onChange={(e) => setBatch(e.target.value)} required className="pl-14 appearance-none relative block w-full px-3 py-3 border border-gray-700 bg-gray-800/50 placeholder-gray-500 text-gray-200 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="e.g., 27" />
+                <input name="batch" type="tel" value={batch} onChange={handleBatchChange} maxLength={2} required className="pl-14 appearance-none relative block w-full px-3 py-3 border border-gray-700 bg-gray-800/50 placeholder-gray-500 text-gray-200 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="e.g., 27" />
               </div>
               <input name="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="appearance-none relative block w-full px-3 py-3 border border-gray-700 bg-gray-800/50 placeholder-gray-500 text-gray-200 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Password" />
               <input name="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="appearance-none relative block w-full px-3 py-3 border border-gray-700 bg-gray-800/50 placeholder-gray-500 text-gray-200 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Confirm Password" />

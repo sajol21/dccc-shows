@@ -4,26 +4,28 @@ import { getPost, addSuggestion, toggleLikePost, deletePost, updatePost } from '
 import { Post } from '../types.js';
 import { PROVINCES, UserRole } from '../constants.js';
 import { useAuth } from '../contexts/AuthContext.js';
-import Spinner from '../components/Spinner.js';
 import Modal from '../components/Modal.js';
 import RoleBadge from '../components/RoleBadge.js';
 import { db } from '../config/firebase.js';
 import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
 
-const getEmbedUrl = (url: string | undefined): string => {
+const getEmbedUrl = (url: string | undefined, autoplay: boolean = false): string => {
     if (!url) return '';
     try {
         if (url.includes('youtube.com/watch')) {
             const videoId = new URL(url).searchParams.get('v');
-            return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+            return videoId ? `https://www.youtube.com/embed/${videoId}${autoplay ? '?autoplay=1' : ''}` : url;
         }
         if (url.includes('youtu.be/')) {
             const videoId = new URL(url).pathname.split('/').pop();
-            return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+            return videoId ? `https://www.youtube.com/embed/${videoId}${autoplay ? '?autoplay=1' : ''}` : url;
         }
         if (url.includes('vimeo.com/')) {
             const videoId = new URL(url).pathname.split('/').pop();
-            return videoId ? `https://player.vimeo.com/video/${videoId}` : url;
+            return videoId ? `https://player.vimeo.com/video/${videoId}${autoplay ? '?autoplay=1' : ''}` : url;
+        }
+        if (url.includes('facebook.com/') || url.includes('fb.watch')) {
+            return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false&width=auto${autoplay ? '&autoplay=true' : ''}`;
         }
     } catch (e) {
         console.error('Error parsing video URL', e);
@@ -135,7 +137,32 @@ const PostDetailPage: React.FC = () => {
     };
 
 
-    if (loading) return <Spinner />;
+    if (loading) {
+        return (
+            <div className="bg-gray-900/80 backdrop-blur-lg rounded-xl border border-gray-700 shadow-xl overflow-hidden animate-pulse">
+                <div className="aspect-video bg-gray-700"></div>
+                <div className="p-6 md:p-10">
+                    <div className="h-8 bg-gray-700 rounded w-3/4 mb-4"></div>
+                    <div className="flex items-center gap-2 mb-2">
+                         <div className="h-5 bg-gray-700 rounded w-1/4"></div>
+                         <div className="h-4 bg-gray-700 rounded w-1/5"></div>
+                    </div>
+                    <div className="h-4 bg-gray-700 rounded w-1/3 mb-6"></div>
+                    
+                    <div className="py-4 border-t border-b border-gray-700 flex gap-6">
+                        <div className="h-6 bg-gray-700 rounded w-24"></div>
+                        <div className="h-6 bg-gray-700 rounded w-28"></div>
+                    </div>
+                    
+                    <div className="mt-6 pt-6 border-t border-gray-700">
+                        <div className="h-6 bg-gray-700 rounded w-1/2 mb-4"></div>
+                        <div className="h-20 bg-gray-700 rounded w-full"></div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+    
     if (!post) return <p>This show does not exist or has been removed.</p>;
     
     const isOwner = currentUser?.uid === post?.authorId;
@@ -148,7 +175,7 @@ const PostDetailPage: React.FC = () => {
 
     return (
       <>
-        <div className="bg-gray-900/80 backdrop-blur-lg rounded-xl border border-gray-700 shadow-xl overflow-hidden">
+        <div className="bg-gray-900/80 backdrop-blur-lg rounded-xl border border-gray-700 shadow-xl overflow-hidden animate-fade-in">
             {post.mediaURL && post.type === 'Image' && 
                 <div className="bg-black">
                     <img 
@@ -162,11 +189,11 @@ const PostDetailPage: React.FC = () => {
             {post.mediaURL && post.type === 'Video' && (
                 <div 
                     className="aspect-video bg-black cursor-pointer group relative"
-                    onClick={() => setLightboxMedia({ type: 'Video', url: getEmbedUrl(post.mediaURL) })}
+                    onClick={() => setLightboxMedia({ type: 'Video', url: getEmbedUrl(post.mediaURL, true) })}
                 >
                     <iframe src={getEmbedUrl(post.mediaURL)} frameBorder="0" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title={post.title} className="w-full h-full pointer-events-none"></iframe>
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <svg className="w-20 h-20 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"></path></svg>
+                        <svg className="w-20 h-20 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" ></path></svg>
                     </div>
                 </div>
             )}
@@ -255,7 +282,7 @@ const PostDetailPage: React.FC = () => {
                 )}
                 {lightboxMedia.type === 'Video' && (
                     <div className="aspect-video w-full max-w-6xl" onClick={(e) => e.stopPropagation()}>
-                        <iframe src={`${lightboxMedia.url}?autoplay=1`} frameBorder="0" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title={post.title} className="w-full h-full"></iframe>
+                        <iframe src={lightboxMedia.url} frameBorder="0" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title={post.title} className="w-full h-full"></iframe>
                     </div>
                 )}
             </div>

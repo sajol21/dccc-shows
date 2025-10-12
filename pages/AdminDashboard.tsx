@@ -21,7 +21,6 @@ import {
   deleteSession
 } from '../services/firebaseService.js';
 import { USER_ROLES, UserRole, SESSION_TYPES } from '../constants.js';
-import Spinner from '../components/Spinner.js';
 import { Timestamp } from 'firebase/firestore';
 
 type Tab = 'dashboard' | 'users' | 'posts' | 'promotions' | 'announcements' | 'sessions' | 'settings';
@@ -136,7 +135,7 @@ const AdminDashboard: React.FC = () => {
   const pendingPostsCount = posts.filter(p => !p.approved).length;
 
   return (
-    <div className="bg-gray-900/70 backdrop-blur-lg border border-gray-700 text-gray-200 p-6 rounded-lg shadow-xl">
+    <div className="bg-gray-900/70 backdrop-blur-lg border border-gray-700 text-gray-200 p-6 rounded-lg shadow-xl animate-fade-in">
       <h1 className="text-3xl font-bold mb-6 text-white">Admin Control Deck</h1>
 
       <div className="flex flex-wrap gap-2 border-b border-gray-700 mb-6 pb-2">
@@ -149,7 +148,14 @@ const AdminDashboard: React.FC = () => {
         <TabButton tab="settings" label="Site Settings" />
       </div>
 
-      {loading ? <Spinner /> : (
+      {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 animate-pulse">
+            <div className="bg-gray-800 p-4 rounded-lg h-24 border border-gray-700"></div>
+            <div className="bg-gray-800 p-4 rounded-lg h-24 border border-gray-700"></div>
+            <div className="bg-gray-800 p-4 rounded-lg h-24 border border-gray-700"></div>
+            <div className="bg-gray-800 p-4 rounded-lg h-24 border border-gray-700"></div>
+          </div>
+        ) : (
         <div>
           {error && <p className="text-center text-red-400 bg-red-900/50 p-3 mb-4 rounded-md">{error}</p>}
           {activeTab === 'dashboard' && (

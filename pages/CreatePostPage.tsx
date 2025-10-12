@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { createPost } from '../services/firebaseService.js';
 import { Province, PROVINCES } from '../constants.js';
 import { useAuth } from '../contexts/AuthContext.js';
@@ -8,8 +8,12 @@ import Spinner from '../components/Spinner.js';
 const CreatePostPage: React.FC = () => {
     const { userProfile } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
-    const [title, setTitle] = useState('');
+    // Pre-fill title if passed from homepage
+    const initialTitle = location.state?.title || '';
+
+    const [title, setTitle] = useState(initialTitle);
     const [description, setDescription] = useState('');
     const [province, setProvince] = useState<Province>(Province.CULTURAL);
     const [type, setType] = useState<'Text' | 'Image' | 'Video'>('Text');
@@ -65,7 +69,7 @@ const CreatePostPage: React.FC = () => {
     };
     
     return (
-        <div className="max-w-2xl mx-auto bg-gray-900/70 backdrop-blur-lg border border-gray-700 p-8 rounded-xl shadow-2xl">
+        <div className="max-w-2xl mx-auto bg-gray-900/70 backdrop-blur-lg border border-gray-700 p-8 rounded-xl shadow-2xl animate-fade-in">
             <h1 className="text-3xl font-bold text-center mb-6 text-white">Create Your Show</h1>
             <form onSubmit={handleSubmit} className="space-y-6">
                 {error && <p className="text-center text-red-400 bg-red-900/50 p-3 rounded-md">{error}</p>}

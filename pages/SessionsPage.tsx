@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getSessions } from '../services/firebaseService.js';
 import { Session } from '../types.js';
-import Spinner from '../components/Spinner.js';
+import SkeletonSessionCard from '../components/SkeletonSessionCard.js';
 import SessionCard from '../components/SessionCard.js';
 
 const SessionsPage: React.FC = () => {
@@ -52,17 +52,20 @@ const SessionsPage: React.FC = () => {
       );
 
     return (
-        <div>
+        <div className="animate-fade-in">
+            <div className="text-center mb-8">
+                <h1 className="text-4xl font-bold">Upcoming Sessions</h1>
+                <p className="text-gray-400 mt-2">Stay updated with our latest workshops, sessions, and meetups.</p>
+            </div>
+            
             {loading ? (
-                <Spinner />
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {Array.from({ length: 3 }).map((_, index) => <SkeletonSessionCard key={index} />)}
+                </div>
             ) : error ? (
                 <Alert message={error} />
             ) : (
                 <>
-                    <div className="text-center mb-8">
-                        <h1 className="text-4xl font-bold">Upcoming Sessions</h1>
-                        <p className="text-gray-400 mt-2">Stay updated with our latest workshops, sessions, and meetups.</p>
-                    </div>
                     {upcomingSessions.length > 0 ? (
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {upcomingSessions.map(session => (

@@ -1,5 +1,6 @@
 import { Timestamp } from 'firebase/firestore';
 import { UserRole, Province } from './constants.js';
+import React from 'react';
 
 export interface UserProfile {
   uid: string;
@@ -115,4 +116,13 @@ export interface Session {
   eventDate: Timestamp;
   createdAt: Timestamp;
   status?: 'upcoming' | 'completed';
+}
+
+// fix: Added Badge interface to solve typing errors.
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  condition: (user: UserProfile) => boolean;
 }

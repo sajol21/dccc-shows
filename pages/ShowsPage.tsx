@@ -4,13 +4,14 @@ import { Post, SiteConfig } from '../types.js';
 import { PROVINCES, ROLE_HIERARCHY } from '../constants.js';
 import PostCard from '../components/PostCard.js';
 import Spinner from '../components/Spinner.js';
+import SkeletonPostCard from '../components/SkeletonPostCard.js';
 import { useAuth } from '../contexts/AuthContext.js';
 import { DocumentSnapshot } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 
 
 const ShowsPage: React.FC = () => {
-  const { userProfile } = useAuth();
+  const { userProfile, currentUser } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [featuredPosts, setFeaturedPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
@@ -23,7 +24,10 @@ const ShowsPage: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
     const fetchSideData = async () => {
-        const [config, featured] = await Promise.all([getSiteConfig(), getFeaturedPosts()]);
+        const configPromise = getSiteConfig();
+        const featuredPromise = currentUser ? getFeaturedPosts() : Promise.resolve([]);
+        const [config, featured] = await Promise.all([configPromise, featuredPromise]);
+        
         if (isMounted) {
             setSiteConfig(config);
             setFeaturedPosts(featured);
@@ -31,7 +35,7 @@ const ShowsPage: React.FC = () => {
     };
     fetchSideData();
     return () => { isMounted = false; };
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     let isMounted = true;
@@ -99,7 +103,7 @@ const ShowsPage: React.FC = () => {
   const canPost = userProfile && siteConfig && ROLE_HIERARCHY[userProfile.role] >= ROLE_HIERARCHY[siteConfig.minRoleToPost];
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <h1 className="text-4xl font-bold">The Grand Stage</h1>
         {userProfile && siteConfig && (
@@ -129,7 +133,7 @@ const ShowsPage: React.FC = () => {
         </div>
       )}
 
-      {featuredPosts.length > 0 && (
+      {currentUser && featuredPosts.length > 0 && (
           <section className="mb-12">
               <h2 className="text-3xl font-bold text-center mb-6">Featured Shows</h2>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -153,7 +157,11 @@ const ShowsPage: React.FC = () => {
       </div>
       
       {loading && posts.length === 0 ? (
-        <div className="py-8"><Spinner /></div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {Array.from({ length: 9 }).map((_, index) => (
+            <SkeletonPostCard key={index} />
+          ))}
+        </div>
       ) : error ? (
         <Alert message={error} />
       ) : posts.length > 0 ? (

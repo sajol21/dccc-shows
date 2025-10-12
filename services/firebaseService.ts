@@ -66,6 +66,7 @@ export const logout = async (): Promise<void> => {
   await signOut(auth);
 };
 
+
 // Post Management
 export const createPost = async (
     postData: Omit<Post, 'id' | 'timestamp' | 'likes' | 'suggestions'>
@@ -168,26 +169,14 @@ export const toggleLikePost = async (postId: string, userId: string): Promise<vo
     const postSnap = await getDoc(postRef);
     if (!postSnap.exists()) return;
 
-    const batch = writeBatch(db);
     const post = postSnap.data() as Post;
-    const authorRef = doc(db, 'users', post.authorId);
     const currentLikes = post.likes || [];
-    
     const isLiked = currentLikes.includes(userId);
-    const likeIncrement = isLiked ? -1 : 1;
 
-    // Update post likes array
-    batch.update(postRef, { 
+    // Only update the post document, removing the insecure cross-user profile update that was causing permission errors.
+    await updateDoc(postRef, { 
         likes: isLiked ? arrayRemove(userId) : arrayUnion(userId) 
     });
-
-    // Update author's stats
-    batch.update(authorRef, {
-        totalLikes: increment(likeIncrement),
-        leaderboardScore: increment(likeIncrement)
-    });
-
-    await batch.commit();
 };
 
 
@@ -197,27 +186,56 @@ export const addSuggestion = async (postId: string, suggestionData: Omit<Suggest
     const postSnap = await getDoc(postRef);
     if (!postSnap.exists()) return;
 
-    const batch = writeBatch(db);
     const post = postSnap.data() as Post;
-    const authorRef = doc(db, 'users', post.authorId);
     
     const newSuggestion: Suggestion = {
       ...suggestionData,
       timestamp: Timestamp.now()
     };
     
-    // Update post suggestions array
-    batch.update(postRef, {
+    // Update the post document with the new suggestion. This is secure.
+    await updateDoc(postRef, {
       suggestions: arrayUnion(newSuggestion)
     });
 
-    // Update author's stats (e.g., 5 points per suggestion)
-    batch.update(authorRef, {
-        totalSuggestions: increment(1),
-        leaderboardScore: increment(5)
+    // Send a notification, but do not update the author's score from the client.
+    // The score can be updated by the author on their profile page.
+    if (post.authorId !== suggestionData.commenterId) {
+        await createNotification(
+            post.authorId,
+            "New suggestion on your show!",
+            `${suggestionData.commenterName} left a suggestion on "${post.title}".`,
+            `/post/${postId}`
+        );
+    }
+};
+
+// New function to allow users to securely update their own stats.
+export const recalculateUserStats = async (userId: string): Promise<void> => {
+    // 1. Fetch all posts by the user.
+    const q = query(collection(db, 'posts'), where('authorId', '==', userId));
+    const querySnapshot = await getDocs(q);
+    const posts = querySnapshot.docs.map(doc => doc.data() as Post);
+
+    // 2. Calculate totals from the posts.
+    let totalLikes = 0;
+    let totalSuggestions = 0;
+    posts.forEach(post => {
+        totalLikes += post.likes?.length || 0;
+        // Don't count user's own suggestions towards their score.
+        totalSuggestions += post.suggestions?.filter(s => s.commenterId !== userId).length || 0;
     });
 
-    await batch.commit();
+    // 3. Calculate leaderboard score. (1 point per like, 5 per suggestion)
+    const leaderboardScore = totalLikes + (totalSuggestions * 5);
+
+    // 4. Update the user's profile document.
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+        totalLikes,
+        totalSuggestions,
+        leaderboardScore
+    });
 };
 
 
@@ -275,315 +293,4 @@ export const updateSiteConfig = async (data: Partial<SiteConfig>): Promise<void>
 // Announcements & Notifications
 const createNotification = async (userId: string, title: string, body: string, link: string = ''): Promise<void> => {
     await addDoc(collection(db, 'notifications'), {
-        userId,
-        title,
-        body,
-        link,
-        read: false,
-        createdAt: serverTimestamp()
-    });
-};
-
-export const deleteNotification = async (notificationId: string): Promise<void> => {
-    const notificationRef = doc(db, 'notifications', notificationId);
-    await deleteDoc(notificationRef);
-};
-
-export const clearAllNotifications = async (userId: string): Promise<void> => {
-  const q = query(collection(db, 'notifications'), where('userId', '==', userId));
-  const querySnapshot = await getDocs(q);
-  
-  if (querySnapshot.empty) return;
-
-  const batch = writeBatch(db);
-  querySnapshot.forEach(doc => {
-    batch.delete(doc.ref);
-  });
-  
-  await batch.commit();
-};
-
-export const onNotificationsUpdate = (userId: string, callback: (notifications: Notification[]) => void): Unsubscribe => {
-    const q = query(
-        collection(db, 'notifications'),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc'),
-        limit(15)
-    );
-    
-    return onSnapshot(q, (querySnapshot) => {
-        const notifications = querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as Notification);
-        callback(notifications);
-    });
-};
-
-export const createAnnouncement = async (title: string, body: string): Promise<void> => {
-    await addDoc(collection(db, 'announcements'), {
-        title,
-        body,
-        createdAt: serverTimestamp(),
-    });
-};
-
-// fix: Added missing getAnnouncements function for admin dashboard.
-export const getAnnouncements = async (): Promise<Announcement[]> => {
-    const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Announcement);
-};
-
-export const onAnnouncementsUpdate = (callback: (announcements: Announcement[]) => void): Unsubscribe => {
-    const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(10));
-
-    return onSnapshot(q, (querySnapshot) => {
-        const announcements = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Announcement);
-        callback(announcements);
-    });
-};
-
-export const markAnnouncementsAsRead = async (userId: string, announcementIds: string[]): Promise<void> => {
-    if (announcementIds.length === 0) return;
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-        readAnnouncements: arrayUnion(...announcementIds)
-    });
-};
-
-export const markNotificationsAsRead = async (userId: string, notificationIds: string[]): Promise<void> => {
-    if (notificationIds.length === 0) return;
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-        readNotifications: arrayUnion(...notificationIds)
-    });
-};
-
-
-// About Page
-export const getCommitteeMembers = async (): Promise<UserProfile[]> => {
-    const q = query(
-        collection(db, 'users'), 
-        where('role', 'in', [UserRole.ADMIN, UserRole.EXECUTIVE_MEMBER])
-    );
-    const querySnapshot = await getDocs(q);
-    const members = querySnapshot.docs.map(doc => doc.data() as UserProfile);
-    // Sort admins first, then by name
-    return members.sort((a, b) => {
-        if (a.role === UserRole.ADMIN && b.role !== UserRole.ADMIN) return -1;
-        if (a.role !== UserRole.ADMIN && b.role === UserRole.ADMIN) return 1;
-        return a.name.localeCompare(b.name);
-    });
-};
-
-
-// Admin Functions
-export const getAllUsers = async (): Promise<UserProfile[]> => {
-    const querySnapshot = await getDocs(collection(db, 'users'));
-    return querySnapshot.docs.map(doc => doc.data() as UserProfile);
-}
-
-export const updateUserRole = async (uid: string, role: UserRole): Promise<void> => {
-    const userRef = doc(db, 'users', uid);
-    await updateDoc(userRef, { role });
-}
-
-export const getAllPostsAdmin = async (): Promise<Post[]> => {
-    const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
-}
-
-export const approvePost = async (postId: string, approved: boolean): Promise<void> => {
-    const postRef = doc(db, 'posts', postId);
-    
-    const postSnap = await getDoc(postRef);
-    if (!postSnap.exists()) {
-        console.error("Post not found, cannot send notification:", postId);
-        return; // Exit if post doesn't exist
-    }
-    const post = postSnap.data() as Post;
-    
-    await updateDoc(postRef, { approved });
-
-    // Create notification for the author
-    if (approved) {
-        await createNotification(
-            post.authorId,
-            "Your show is live!",
-            `Congratulations! Your show "${post.title}" has been approved and is now public.`,
-            `/post/${postId}`
-        );
-    } else {
-        await createNotification(
-            post.authorId,
-            "Update on your show",
-            `An administrator has updated the visibility for your show "${post.title}". It is no longer public.`,
-            `/post/${postId}`
-        );
-    }
-}
-
-export const deletePost = async (post: Post): Promise<void> => {
-    const postRef = doc(db, 'posts', post.id);
-    const userRef = doc(db, 'users', post.authorId);
-
-    // Create notification before deleting the post
-    await createNotification(
-        post.authorId,
-        "Your show was removed",
-        `An administrator has removed your show "${post.title}" from the platform.`,
-        `/user/${post.authorId}` // Link to user's profile as post is gone
-    );
-
-    const batch = writeBatch(db);
-    batch.delete(postRef);
-
-    // Decrement user stats. This is important for leaderboard accuracy.
-    const likesCount = post.likes?.length || 0;
-    const suggestionsCount = post.suggestions?.length || 0;
-    const scoreToRemove = likesCount + (suggestionsCount * 5);
-
-    batch.update(userRef, {
-        submissionsCount: increment(-1),
-        totalLikes: increment(-likesCount),
-        totalSuggestions: increment(-suggestionsCount),
-        leaderboardScore: increment(-scoreToRemove)
-    });
-
-    await batch.commit();
-}
-
-export const resetLeaderboard = async (): Promise<void> => {
-    // 1. Get current top users to archive them
-    const topUsersQuery = query(collection(db, 'users'), where('leaderboardScore', '>', 0), orderBy('leaderboardScore', 'desc'));
-    const topUsersSnapshot = await getDocs(topUsersQuery);
-
-    const usersToArchive: ArchivedUser[] = topUsersSnapshot.docs.map(doc => {
-        const user = doc.data() as UserProfile;
-        return {
-            uid: user.uid,
-            name: user.name,
-            batch: user.batch,
-            role: user.role,
-            leaderboardScore: user.leaderboardScore,
-        };
-    });
-
-    // 2. Create archive document if there are users with scores
-    if (usersToArchive.length > 0) {
-        const now = new Date();
-        // Use last month's date for the archive ID
-        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const archiveId = `${lastMonth.getFullYear()}-${(lastMonth.getMonth() + 1).toString().padStart(2, '0')}`;
-        
-        const archiveRef = doc(db, 'leaderboard_archives', archiveId);
-        await setDoc(archiveRef, {
-            createdAt: serverTimestamp(),
-            users: usersToArchive,
-        });
-    }
-
-    // 3. Reset scores for all users who had a score
-    const batch = writeBatch(db);
-    topUsersSnapshot.forEach(userDoc => {
-        batch.update(userDoc.ref, { 
-            totalLikes: 0,
-            totalSuggestions: 0,
-            leaderboardScore: 0
-        });
-    });
-    await batch.commit();
-}
-
-// Promotion Requests
-export const createPromotionRequest = async (user: UserProfile, requestedRole: UserRole): Promise<void> => {
-    await addDoc(collection(db, 'promotionRequests'), {
-        userId: user.uid,
-        userName: user.name,
-        userBatch: user.batch,
-        currentRole: user.role,
-        requestedRole: requestedRole,
-        status: 'pending',
-        createdAt: serverTimestamp(),
-    });
-};
-
-export const getUsersPendingRequest = async (userId: string): Promise<PromotionRequest | null> => {
-    const q = query(
-        collection(db, 'promotionRequests'),
-        where('userId', '==', userId),
-        where('status', '==', 'pending'),
-        limit(1)
-    );
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-        const doc = querySnapshot.docs[0];
-        return { id: doc.id, ...doc.data() } as PromotionRequest;
-    }
-    return null;
-};
-
-export const getPendingPromotionRequests = async (): Promise<PromotionRequest[]> => {
-    const q = query(
-        collection(db, 'promotionRequests'),
-        where('status', '==', 'pending'),
-        orderBy('createdAt', 'desc')
-    );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PromotionRequest));
-};
-
-export const approvePromotionRequest = async (requestId: string, userId: string, newRole: UserRole): Promise<void> => {
-    const batch = writeBatch(db);
-    const requestRef = doc(db, 'promotionRequests', requestId);
-    batch.update(requestRef, { status: 'approved' });
-    const userRef = doc(db, 'users', userId);
-    batch.update(userRef, { role: newRole });
-    await batch.commit();
-
-    await createNotification(userId, "Promotion Approved!", `Congratulations, your role has been updated to ${newRole}.`, `/user/${userId}`);
-};
-
-export const rejectPromotionRequest = async (requestId: string, userId: string): Promise<void> => {
-    const requestRef = doc(db, 'promotionRequests', requestId);
-    await updateDoc(requestRef, { status: 'rejected' });
-    await createNotification(userId, "Promotion Request Update", "Your recent promotion request was not approved at this time.", `/user/${userId}`);
-};
-
-// Session Management
-export const createSession = async (sessionData: Omit<Session, 'id' | 'createdAt' | 'status'>): Promise<void> => {
-    await addDoc(collection(db, 'sessions'), {
-        ...sessionData,
-        status: 'upcoming',
-        createdAt: serverTimestamp(),
-    });
-    // Also create a global announcement for the session
-    await createAnnouncement(
-        `New ${sessionData.type}: ${sessionData.title}`,
-        sessionData.description
-    );
-};
-
-export const getSessions = async (): Promise<Session[]> => {
-    const q = query(collection(db, 'sessions'), orderBy('eventDate', 'desc'));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Session));
-};
-
-export const getSession = async (sessionId: string): Promise<Session | null> => {
-    const sessionRef = doc(db, 'sessions', sessionId);
-    const docSnap = await getDoc(sessionRef);
-    if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() } as Session;
-    }
-    return null;
-}
-
-export const updateSession = async (sessionId: string, data: Partial<Session>): Promise<void> => {
-    const sessionRef = doc(db, 'sessions', sessionId);
-    await updateDoc(sessionRef, data);
-};
-
-export const deleteSession = async (sessionId: string): Promise<void> => {
-    const sessionRef = doc(db, 'sessions', sessionId);
-    await deleteDoc(sessionRef);
-};
+        userId
