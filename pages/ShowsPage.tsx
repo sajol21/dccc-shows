@@ -8,6 +8,7 @@ import SkeletonPostCard from '../components/SkeletonPostCard.js';
 import { useAuth } from '../contexts/AuthContext.js';
 import { DocumentSnapshot } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
+import SEO from '../components/SEO.js';
 
 
 const ShowsPage: React.FC = () => {
@@ -104,6 +105,11 @@ const ShowsPage: React.FC = () => {
 
   return (
     <div className="animate-fade-in">
+      <SEO
+        title="Explore Shows | DCCC"
+        description="Browse all the creative works submitted by members of the Dhaka College Cultural Club. Filter by province, type, or batch."
+        keywords="student shows, creative works, DCCC submissions, text, image, video"
+      />
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <h1 className="text-4xl font-bold">The Grand Stage</h1>
         {userProfile && siteConfig && (

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getSession } from '../services/firebaseService.js';
 import { Session } from '../types.js';
+import SEO from '../components/SEO.js';
 
 const InfoBlock: React.FC<{ icon: React.ReactNode, title: string, value: string }> = ({ icon, title, value }) => (
     <div className="flex items-center gap-4 p-2">
@@ -80,9 +81,36 @@ const SessionDetailPage: React.FC = () => {
     if (!session) return null;
     
     const eventDate = session.eventDate ? new Date(session.eventDate.toDate()) : null;
+    
+    const eventStructuredData = eventDate ? {
+        "@context": "https://schema.org",
+        "@type": "Event",
+        "name": session.title,
+        "startDate": eventDate.toISOString(),
+        "description": session.description,
+        "image": session.bannerUrl,
+        "location": {
+            "@type": "Place",
+            "name": session.place || "Online",
+            "address": session.place || "Dhaka College"
+        },
+        "organizer": {
+            "@type": "Organization",
+            "name": "Dhaka College Cultural Club",
+            "url": window.location.origin
+        }
+    } : undefined;
+
 
     return (
         <div className="bg-gray-900/80 backdrop-blur-lg rounded-xl border border-gray-700 shadow-xl overflow-hidden max-w-4xl mx-auto animate-fade-in">
+             <SEO
+                title={`${session.title} | DCCC Sessions`}
+                description={session.description}
+                imageUrl={session.bannerUrl}
+                type="website"
+                structuredData={eventStructuredData}
+            />
             <div className="bg-black">
                 <img src={session.bannerUrl} alt={session.title} className="w-full aspect-video object-cover" />
             </div>

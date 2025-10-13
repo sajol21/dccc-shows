@@ -8,6 +8,7 @@ import Modal from '../components/Modal.js';
 import RoleBadge from '../components/RoleBadge.js';
 import { db } from '../config/firebase.js';
 import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
+import SEO from '../components/SEO.js';
 
 const getEmbedUrl = (url: string | undefined, autoplay: boolean = false): string => {
     if (!url) return '';
@@ -33,6 +34,32 @@ const getEmbedUrl = (url: string | undefined, autoplay: boolean = false): string
     }
     return url;
 };
+
+const getVideoThumbnail = (url: string | undefined): string | null => {
+    if (!url) return null;
+    let videoId: string | null = null;
+    try {
+        if (url.includes('youtube.com/watch')) {
+            videoId = new URL(url).searchParams.get('v');
+        } else if (url.includes('youtu.be/')) {
+            videoId = new URL(url).pathname.split('/').pop() || null;
+        }
+
+        if (videoId) {
+            return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        }
+    } catch (e) {
+        console.error("Could not parse video URL for thumbnail", e);
+        return null;
+    }
+    return null;
+};
+
+const truncate = (str: string, length: number): string => {
+    if (!str) return '';
+    return str.length > length ? str.substring(0, length) + '...' : str;
+};
+
 
 const PostDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -173,8 +200,39 @@ const PostDetailPage: React.FC = () => {
     
     const suggestions = post.suggestions?.sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime()) || [];
 
+    const imageUrl = post.type === 'Image' ? post.mediaURL : post.type === 'Video' ? getVideoThumbnail(post.mediaURL) || undefined : undefined;
+    const description = truncate(post.description, 160);
+
+    const articleStructuredData = {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": post.title,
+        "image": imageUrl || "https://res.cloudinary.com/dabfeqgsj/image/upload/v1759778648/cyizstrjgcq0w9fr8cxp.png",
+        "author": {
+            "@type": "Person",
+            "name": post.authorName
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Dhaka College Cultural Club",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://res.cloudinary.com/dabfeqgsj/image/upload/v1759778648/cyizstrjgcq0w9fr8cxp.png"
+          }
+        },
+        "datePublished": post.timestamp?.toDate().toISOString(),
+        "description": description
+    };
+
     return (
       <>
+        <SEO 
+            title={`${post.title} by ${post.authorName} | DCCC Shows`}
+            description={description}
+            imageUrl={imageUrl}
+            type="article"
+            structuredData={articleStructuredData}
+        />
         <div className="bg-gray-900/80 backdrop-blur-lg rounded-xl border border-gray-700 shadow-xl overflow-hidden animate-fade-in">
             {post.mediaURL && post.type === 'Image' && 
                 <div className="bg-black">

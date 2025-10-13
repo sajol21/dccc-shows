@@ -4,6 +4,7 @@ import { getPosts, getSiteConfig } from '../services/firebaseService.js';
 import { Post, SiteConfig } from '../types.js';
 import PostCard from '../components/PostCard.js';
 import SkeletonPostCard from '../components/SkeletonPostCard.js';
+import SEO from '../components/SEO.js';
 
 type PostTypeFilter = 'All' | 'Text' | 'Image' | 'Video';
 
@@ -89,6 +90,11 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="space-y-16 animate-fade-in">
+      <SEO 
+        title="DCCC Shows | Dhaka College Cultural Club"
+        description="The official platform for the Dhaka College Cultural Club. Share your creativity, get feedback, and climb the ranks!"
+        keywords="DCCC, Dhaka College, cultural club, student art, creative platform"
+      />
       {/* Welcome Banner */}
       <section className="bg-gradient-to-br from-blue-600/50 to-indigo-700/50 backdrop-blur-lg text-white rounded-xl p-16 text-center shadow-2xl shadow-blue-500/20 border border-white/20">
         <h1 className="text-4xl md:text-6xl font-extrabold mb-4 bg-gradient-to-b from-white to-gray-300 bg-clip-text text-transparent">Welcome to DCCC</h1>

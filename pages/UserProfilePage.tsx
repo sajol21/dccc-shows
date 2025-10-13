@@ -7,6 +7,7 @@ import { UserProfile, Post, PromotionRequest } from '../types.js';
 import PostCard from '../components/PostCard.js';
 import SkeletonPostCard from '../components/SkeletonPostCard.js';
 import { ALL_BADGES, Badge } from '../badges.js';
+import SEO from '../components/SEO.js';
 
 const NEXT_ROLE_MAP: Partial<Record<UserRole, UserRole>> = {
     [UserRole.GENERAL_STUDENT]: UserRole.GENERAL_MEMBER,
@@ -149,10 +150,10 @@ const UserProfilePage: React.FC = () => {
   if (loading || authLoading) {
     return (
       <div className="space-y-12">
-        <div className="max-w-4xl mx-auto bg-gray-800 rounded-lg shadow-xl p-8 animate-pulse">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="max-w-5xl mx-auto bg-gray-800 rounded-lg shadow-xl p-4 md:p-8 animate-pulse">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
                 {/* Left Column Skeleton */}
-                <div className="md:col-span-1 space-y-6">
+                <div className="md:col-span-2 space-y-8">
                     <div>
                         <div className="h-8 bg-gray-700 rounded w-48 mb-2"></div>
                         <div className="h-5 bg-gray-700 rounded w-64 mb-3"></div>
@@ -175,8 +176,8 @@ const UserProfilePage: React.FC = () => {
                     </div>
                 </div>
                 {/* Right Column Skeleton */}
-                <div className="md:col-span-2 space-y-4">
-                    <div className="grid grid-cols-3 gap-4">
+                <div className="md:col-span-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
                         <div className="p-4 bg-gray-700 rounded-lg h-20"></div>
                         <div className="p-4 bg-gray-700 rounded-lg h-20"></div>
                         <div className="p-4 bg-gray-700 rounded-lg h-20"></div>
@@ -203,10 +204,28 @@ const UserProfilePage: React.FC = () => {
   const canRequestPromotion = isOwner && NEXT_ROLE_MAP[profileData.role] && !pendingRequest;
   
   const earnedBadgeIds = new Set(ALL_BADGES.filter(b => b.condition(profileData)).map(b => b.id));
+  
+  const profileStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    "mainEntity": {
+        "@type": "Person",
+        "name": profileData.name,
+        "description": `${profileData.role} at Dhaka College Cultural Club, Batch ${profileData.batch}. Submissions: ${profileData.submissionsCount}, Likes: ${profileData.totalLikes}.`,
+        "url": window.location.href
+    }
+  };
+
 
   return (
     <div className="space-y-12 animate-fade-in">
-      <div className="max-w-5xl mx-auto bg-gray-800 rounded-lg shadow-xl p-8">
+       <SEO
+        title={`${profileData.name} (${profileData.role}) | DCCC Profile`}
+        description={`View the profile and creative works of ${profileData.name}, a ${profileData.role} from Batch ${profileData.batch} at the Dhaka College Cultural Club.`}
+        keywords={`${profileData.name}, DCCC profile, Dhaka College, student portfolio`}
+        structuredData={profileStructuredData}
+      />
+      <div className="max-w-5xl mx-auto bg-gray-800 rounded-lg shadow-xl p-4 md:p-8">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
             {/* Left Column */}
             <div className="md:col-span-2 space-y-8">
@@ -250,7 +269,7 @@ const UserProfilePage: React.FC = () => {
 
             {/* Right Column */}
             <div className="md:col-span-3">
-                <div className="grid grid-cols-3 gap-4 text-center mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center mb-6">
                     <div className="p-4 bg-gray-700 rounded-lg">
                         <p className="text-2xl font-bold text-white">{profileData.submissionsCount}</p>
                         <p className="text-sm text-gray-400">Submissions</p>

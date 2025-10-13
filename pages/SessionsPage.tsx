@@ -3,6 +3,7 @@ import { getSessions } from '../services/firebaseService.js';
 import { Session } from '../types.js';
 import SkeletonSessionCard from '../components/SkeletonSessionCard.js';
 import SessionCard from '../components/SessionCard.js';
+import SEO from '../components/SEO.js';
 
 const SessionsPage: React.FC = () => {
     const [upcomingSessions, setUpcomingSessions] = useState<Session[]>([]);
@@ -53,6 +54,11 @@ const SessionsPage: React.FC = () => {
 
     return (
         <div className="animate-fade-in">
+            <SEO 
+                title="Sessions & Workshops | DCCC"
+                description="Stay updated with the latest workshops, sessions, and meetups organized by the Dhaka College Cultural Club."
+                keywords="DCCC sessions, workshops, events, meetups, cultural events"
+            />
             <div className="text-center mb-8">
                 <h1 className="text-4xl font-bold">Upcoming Sessions</h1>
                 <p className="text-gray-400 mt-2">Stay updated with our latest workshops, sessions, and meetups.</p>

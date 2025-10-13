@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getLeaderboardUsers, getLeaderboardArchives, getArchivedLeaderboard } from '../services/firebaseService.js';
 import { UserProfile, LeaderboardArchive, ArchivedUser } from '../types.js';
 import RoleBadge from '../components/RoleBadge.js';
+import SEO from '../components/SEO.js';
 
 type LeaderboardView = 'current' | string; // 'current' or an archive ID like '2024-07'
 
@@ -82,6 +83,11 @@ const LeaderboardPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
+      <SEO
+        title={`${title} | DCCC`}
+        description="See the top-performing members of the Dhaka College Cultural Club. Rankings are based on likes and suggestions received on their shows."
+        keywords="leaderboard, top members, DCCC ranks, student competition"
+      />
       <div className="text-center mb-8">
         <h1 className="text-4xl font-extrabold text-white">{title}</h1>
         <p className="text-gray-400 mt-2">Top performers based on likes and suggestions received.</p>

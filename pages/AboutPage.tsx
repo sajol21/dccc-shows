@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile } from '../types.js';
 import { getCommitteeMembers } from '../services/firebaseService.js';
+import SEO from '../components/SEO.js';
 
 const AboutPage: React.FC = () => {
   const [committee, setCommittee] = useState<UserProfile[]>([]);
@@ -32,6 +33,11 @@ const AboutPage: React.FC = () => {
 
   return (
     <div className="bg-gray-800 rounded-lg shadow-lg p-8 space-y-6 animate-fade-in">
+      <SEO
+        title="About DCCC | Dhaka College Cultural Club"
+        description="Learn about the mission of the Dhaka College Cultural Club and meet the executive committee members who lead our vibrant community."
+        keywords="about DCCC, mission, executive committee, Dhaka College"
+      />
       <h1 className="text-4xl font-bold text-center text-white">About DCCC</h1>
       <p className="text-lg text-gray-300">
         Dhaka College Cultural Club (DCCC) is a vibrant community of students passionate about arts, culture, and technology. Our mission is to provide a platform for students to showcase their talents, collaborate on creative projects, and foster a rich cultural environment within the college.
