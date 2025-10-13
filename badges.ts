@@ -60,7 +60,7 @@ export const ALL_BADGES: Badge[] = [
   {
     id: 'fan_favorite',
     name: 'Fan Favorite',
-    description: 'Awarded for receiving 100 or more likes across all shows.',
+    description: 'Awarded for receiving 100 or more appreciates across all shows.',
     icon: React.createElement("svg", {
       xmlns: "http://www.w3.org/2000/svg",
       className: "h-10 w-10",

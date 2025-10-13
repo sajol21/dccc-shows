@@ -207,12 +207,29 @@ const UserProfilePage: React.FC = () => {
   
   const profileStructuredData = {
     "@context": "https://schema.org",
-    "@type": "ProfilePage",
-    "mainEntity": {
-        "@type": "Person",
-        "name": profileData.name,
-        "description": `${profileData.role} at Dhaka College Cultural Club, Batch ${profileData.batch}. Submissions: ${profileData.submissionsCount}, Likes: ${profileData.totalLikes}.`,
-        "url": window.location.href
+    "@type": "Person",
+    "name": profileData.name,
+    "url": window.location.href,
+    "description": `Profile of ${profileData.name}, a ${profileData.role} and member of the Dhaka College Cultural Club.`,
+    "mainEntityOfPage": {
+       "@type": "WebPage",
+       "@id": window.location.href
+    },
+    "interactionStatistic": [
+      {
+        "@type": "InteractionCounter",
+        "interactionType": "https://schema.org/LikeAction",
+        "userInteractionCount": profileData.totalLikes
+      },
+      {
+        "@type": "InteractionCounter",
+        "interactionType": "https://schema.org/WriteAction",
+        "userInteractionCount": profileData.submissionsCount
+      }
+    ],
+    "worksFor": {
+      "@type": "Organization",
+      "name": "Dhaka College Cultural Club"
     }
   };
 
@@ -276,7 +293,7 @@ const UserProfilePage: React.FC = () => {
                     </div>
                     <div className="p-4 bg-gray-700 rounded-lg">
                         <p className="text-2xl font-bold text-white">{profileData.totalLikes}</p>
-                        <p className="text-sm text-gray-400">Total Likes</p>
+                        <p className="text-sm text-gray-400">Total Appreciates</p>
                     </div>
                      <div className="p-4 bg-gray-700 rounded-lg">
                         <p className="text-2xl font-bold text-white">{profileData.totalSuggestions}</p>

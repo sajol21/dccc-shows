@@ -20,12 +20,13 @@ import VerifyEmailPage from './pages/VerifyEmailPage.js';
 import CreatePostPage from './pages/CreatePostPage.js';
 import SessionsPage from './pages/SessionsPage.js';
 import SessionDetailPage from './pages/SessionDetailPage.js';
+import BottomNavBar from './components/BottomNavBar.js';
 
 const AppContent: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-black/60 text-gray-200">
       <Header />
-      <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/shows" element={<ShowsPage />} />
@@ -60,6 +61,7 @@ const AppContent: React.FC = () => {
         </Routes>
       </main>
       <Footer />
+      <BottomNavBar />
     </div>
   );
 };

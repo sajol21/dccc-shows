@@ -174,13 +174,26 @@ export const toggleLikePost = async (postId: string, userId: string): Promise<vo
     }
 
     const post = postSnap.data() as Post;
+    const authorRef = doc(db, 'users', post.authorId);
     const isLiked = (post.likes || []).includes(userId);
+    const likeIncrement = isLiked ? -1 : 1;
 
-    // Only update the post document to prevent permission errors.
-    // User stats will be recalculated on their next profile visit.
-    await updateDoc(postRef, { 
-        likes: isLiked ? arrayRemove(userId) : arrayUnion(userId) 
+    const batch = writeBatch(db);
+
+    // Update post likes array
+    batch.update(postRef, {
+        likes: isLiked ? arrayRemove(userId) : arrayUnion(userId)
     });
+
+    // Update author's stats if they aren't liking their own post
+    if (post.authorId !== userId) {
+        batch.update(authorRef, {
+            totalLikes: increment(likeIncrement),
+            leaderboardScore: increment(likeIncrement * 2) // 2 points per appreciate
+        });
+    }
+
+    await batch.commit();
 };
 
 
@@ -194,6 +207,7 @@ export const addSuggestion = async (postId: string, suggestionData: Omit<Suggest
     }
     
     const post = postSnap.data() as Post;
+    const authorRef = doc(db, 'users', post.authorId);
     
     const newSuggestion: Suggestion = {
       ...suggestionData,
@@ -202,12 +216,20 @@ export const addSuggestion = async (postId: string, suggestionData: Omit<Suggest
     
     const batch = writeBatch(db);
     
-    // 1. Update the post with the new suggestion. This is secure.
+    // 1. Update the post with the new suggestion.
     batch.update(postRef, {
       suggestions: arrayUnion(newSuggestion)
     });
 
-    // 2. Create a notification for the author. This is secure.
+    // 2. Update author's stats if they aren't suggesting on their own post
+    if (post.authorId !== suggestionData.commenterId) {
+        batch.update(authorRef, {
+            totalSuggestions: increment(1),
+            leaderboardScore: increment(1) // 1 point per suggestion
+        });
+    }
+
+    // 3. Create a notification for the author.
     if (post.authorId !== suggestionData.commenterId) {
         const notificationRef = doc(collection(db, 'notifications'));
         batch.set(notificationRef, {
@@ -238,7 +260,7 @@ export const recalculateUserStats = async (userId: string): Promise<void> => {
         totalSuggestions += (post.suggestions || []).length;
     });
 
-    const leaderboardScore = totalLikes + (totalSuggestions * 5);
+    const leaderboardScore = (totalLikes * 2) + totalSuggestions;
     const submissionsCount = postsSnapshot.size;
 
     // 3. Update the user's own profile. This is a secure operation.
@@ -253,16 +275,68 @@ export const recalculateUserStats = async (userId: string): Promise<void> => {
 
 
 // Leaderboard
-export const getLeaderboardUsers = async (): Promise<UserProfile[]> => {
+export const onLeaderboardUpdate = (callback: (users: UserProfile[]) => void): Unsubscribe => {
     const q = query(
-        collection(db, 'users'), 
+        collection(db, 'users'),
         where('role', 'in', LEADERBOARD_ROLES),
-        orderBy('leaderboardScore', 'desc'), 
+        orderBy('leaderboardScore', 'desc'),
         limit(50)
     );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data() as UserProfile);
+
+    return onSnapshot(q, (querySnapshot) => {
+        const users = querySnapshot.docs.map(doc => doc.data() as UserProfile);
+        
+        // Secondary sort for users with the same score
+        users.sort((a, b) => {
+            if (a.leaderboardScore !== b.leaderboardScore) {
+                return b.leaderboardScore - a.leaderboardScore;
+            }
+            return a.name.localeCompare(b.name);
+        });
+
+        callback(users);
+    });
 };
+
+export const getBestPostForUserInMonth = async (userId: string, yearMonth: string): Promise<Post | null> => {
+    // yearMonth is 'YYYY-MM'
+    const [year, month] = yearMonth.split('-').map(Number);
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 1); // Next month's first day is exclusive boundary
+
+    const startTimestamp = Timestamp.fromDate(startDate);
+    const endTimestamp = Timestamp.fromDate(endDate);
+
+    const q = query(
+        collection(db, 'posts'),
+        where('authorId', '==', userId),
+        where('timestamp', '>=', startTimestamp),
+        where('timestamp', '<', endTimestamp),
+        where('approved', '==', true)
+    );
+
+    const querySnapshot = await getDocs(q);
+    const posts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+
+    if (posts.length === 0) {
+        return null;
+    }
+
+    // Find the best post based on score
+    let bestPost: Post | null = null;
+    let highestScore = -1;
+
+    for (const post of posts) {
+        const score = (post.likes?.length || 0) * 2 + (post.suggestions?.length || 0);
+        if (score > highestScore) {
+            highestScore = score;
+            bestPost = post;
+        }
+    }
+
+    return bestPost;
+};
+
 
 export const getLeaderboardArchives = async (): Promise<{id: string}[]> => {
     const q = query(collection(db, 'leaderboard_archives'), orderBy('createdAt', 'desc'));

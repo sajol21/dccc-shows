@@ -55,12 +55,6 @@ const getVideoThumbnail = (url: string | undefined): string | null => {
     return null;
 };
 
-const truncate = (str: string, length: number): string => {
-    if (!str) return '';
-    return str.length > length ? str.substring(0, length) + '...' : str;
-};
-
-
 const PostDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const { currentUser, userProfile } = useAuth();
@@ -201,7 +195,7 @@ const PostDetailPage: React.FC = () => {
     const suggestions = post.suggestions?.sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime()) || [];
 
     const imageUrl = post.type === 'Image' ? post.mediaURL : post.type === 'Video' ? getVideoThumbnail(post.mediaURL) || undefined : undefined;
-    const description = truncate(post.description, 160);
+    const metaDescription = post.description.length > 160 ? post.description.substring(0, 157) + '...' : post.description;
 
     const articleStructuredData = {
         "@context": "https://schema.org",
@@ -221,14 +215,14 @@ const PostDetailPage: React.FC = () => {
           }
         },
         "datePublished": post.timestamp?.toDate().toISOString(),
-        "description": description
+        "description": post.description
     };
 
     return (
       <>
         <SEO 
             title={`${post.title} by ${post.authorName} | DCCC Shows`}
-            description={description}
+            description={metaDescription}
             imageUrl={imageUrl}
             type="article"
             structuredData={articleStructuredData}
@@ -287,13 +281,15 @@ const PostDetailPage: React.FC = () => {
                 </div>
 
 
-                <div className="flex items-center space-x-6 py-4 border-t border-gray-700">
-                    <button onClick={handleLike} className={`flex items-center space-x-2 text-lg font-semibold transition-all duration-150 active:scale-125 ${isLiked ? 'text-red-500' : 'text-gray-400 hover:text-red-400'}`}>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" /></svg>
-                        <span>{(post.likes || []).length} Likes</span>
+                <div className="flex flex-row items-center gap-x-4 sm:gap-x-6 py-4 border-t border-gray-700">
+                    <button onClick={handleLike} className={`flex items-center space-x-1 sm:space-x-2 text-sm sm:text-lg font-semibold transition-all duration-150 active:scale-125 ${isLiked ? 'text-red-500' : 'text-gray-400 hover:text-red-400'}`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" /></svg>
+                        <span>{(post.likes || []).length} Appreciates</span>
                     </button>
-                    <div className="flex items-center space-x-2 text-lg text-gray-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm2 1v8h12V6H4zm3 3h6v2H7V9z" /></svg>
+                    <div className="flex items-center space-x-1 sm:space-x-2 text-sm sm:text-lg text-gray-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                           <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
                         <span>{suggestions.length} Suggestions</span>
                     </div>
                 </div>

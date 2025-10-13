@@ -7,16 +7,14 @@ interface SEOProps {
   imageUrl?: string;
   type?: string; // e.g., 'website', 'article'
   structuredData?: object;
+  noIndex?: boolean;
 }
 
-const SEO: React.FC<SEOProps> = ({ title, description, keywords, imageUrl, type = 'website', structuredData }) => {
+const SEO: React.FC<SEOProps> = ({ title, description, keywords, imageUrl, type = 'website', structuredData, noIndex }) => {
   useEffect(() => {
-    // Standard Meta Tags
-    document.title = title;
-    
     const setMetaTag = (nameOrProperty: string, content: string, isProperty: boolean = false) => {
       const selector = isProperty ? `meta[property='${nameOrProperty}']` : `meta[name='${nameOrProperty}']`;
-      let element = document.querySelector(selector);
+      let element = document.querySelector(selector) as HTMLMetaElement;
       if (!element) {
         element = document.createElement('meta');
         if (isProperty) {
@@ -29,9 +27,20 @@ const SEO: React.FC<SEOProps> = ({ title, description, keywords, imageUrl, type 
       element.setAttribute('content', content);
     };
 
+    // Standard Meta Tags
+    document.title = title;
+    
     setMetaTag('description', description);
     if (keywords) {
       setMetaTag('keywords', keywords);
+    }
+    
+    // Robots tag for noindexing
+    const robotsTag = document.querySelector("meta[name='robots']");
+    if (noIndex) {
+      setMetaTag('robots', 'noindex, follow');
+    } else if (robotsTag) {
+      robotsTag.remove();
     }
 
     // Canonical URL
@@ -81,8 +90,10 @@ const SEO: React.FC<SEOProps> = ({ title, description, keywords, imageUrl, type 
       if (scriptToRemove) {
           scriptToRemove.remove();
       }
+      // Note: We don't clean up the meta/title tags on component unmount in an SPA
+      // because the next page's SEO component will just overwrite them.
     };
-  }, [title, description, keywords, imageUrl, type, structuredData]);
+  }, [title, description, keywords, imageUrl, type, structuredData, noIndex]);
 
   return null;
 };
