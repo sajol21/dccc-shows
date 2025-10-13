@@ -118,7 +118,6 @@ export interface Session {
   status?: 'upcoming' | 'completed';
 }
 
-// fix: Added Badge interface to solve typing errors.
 export interface Badge {
   id: string;
   name: string;

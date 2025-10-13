@@ -1,17 +1,7 @@
 import React from 'react';
-// fix: Removed Badge from this import as it will be defined in this file.
-import { UserProfile } from './types.js';
+import { UserProfile, Badge } from './types.js';
 
-// fix: Added exported Badge interface.
-export interface Badge {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  condition: (user: UserProfile) => boolean;
-}
-
-// FIX: Replaced JSX with React.createElement to avoid syntax errors in a .ts file.
+// Replaced JSX with React.createElement to avoid syntax errors in a .ts file.
 export const ALL_BADGES: Badge[] = [
   {
     id: 'first_show',

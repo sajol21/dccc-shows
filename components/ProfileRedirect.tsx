@@ -1,6 +1,5 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-// fix: Corrected import path for useAuth hook.
 import { useAuth } from '../contexts/AuthContext.js';
 import Spinner from './Spinner.js';
 

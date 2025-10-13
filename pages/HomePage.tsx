@@ -26,7 +26,6 @@ const HomePage: React.FC = () => {
         
         const filterOptions: { type?: 'Text' | 'Image' | 'Video' } = {};
         if (activeFilter !== 'All') {
-            // FIX: Corrected typo from 'active-filter' to 'activeFilter'.
             filterOptions.type = activeFilter;
         }
 

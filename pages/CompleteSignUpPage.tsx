@@ -36,6 +36,10 @@ const CompleteSignUpPage: React.FC = () => {
             setError("Please fill in all required fields.");
             return;
         }
+        if (phone.length !== 11 || !phone.startsWith('01')) {
+            setError("Phone number must be 11 digits long and start with '01'.");
+            return;
+        }
         if (!currentUser) {
             setError("Authentication error. Please try signing up again.");
             return;
@@ -57,6 +61,13 @@ const CompleteSignUpPage: React.FC = () => {
         const value = e.target.value;
         if (/^\d{0,2}$/.test(value)) {
             setBatch(value);
+        }
+    };
+
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        if (/^\d{0,11}$/.test(value)) {
+            setPhone(value);
         }
     };
 
@@ -82,15 +93,25 @@ const CompleteSignUpPage: React.FC = () => {
                         <div className="rounded-md space-y-4">
                             <div>
                                 <label htmlFor="name" className="sr-only">Full Name</label>
-                                <input id="name" name="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="appearance-none relative block w-full px-3 py-3 border border-gray-700 bg-gray-800/50 placeholder-gray-500 text-gray-200 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Full Name" />
+                                <input id="name" name="name" type="text" value={name} onChange={(e) => setName(e.target.value)} required className="appearance-none relative block w-full px-3 py-3 border border-gray-700 bg-gray-800/50 placeholder-gray-500 text-white rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Full Name" />
                             </div>
                             <div>
                                 <label htmlFor="email" className="sr-only">Email address</label>
-                                <input id="email" name="email" type="email" value={email} disabled className="appearance-none relative block w-full px-3 py-3 border border-gray-700 bg-gray-800/50 placeholder-gray-500 text-gray-400 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm cursor-not-allowed" placeholder="Email address" />
+                                <input id="email" name="email" type="email" value={email} disabled className="appearance-none relative block w-full px-3 py-3 border border-gray-700 bg-gray-800/50 placeholder-gray-500 text-white rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm cursor-not-allowed" placeholder="Email address" />
                             </div>
                             <div>
                                 <label htmlFor="phone" className="sr-only">Phone Number</label>
-                                <input id="phone" name="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required className="appearance-none relative block w-full px-3 py-3 border border-gray-700 bg-gray-800/50 placeholder-gray-500 text-gray-200 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Phone Number" />
+                                <input 
+                                    id="phone" 
+                                    name="phone" 
+                                    type="tel" 
+                                    value={phone} 
+                                    onChange={handlePhoneChange} 
+                                    maxLength={11} 
+                                    required 
+                                    className="appearance-none relative block w-full px-3 py-3 border border-gray-700 bg-gray-800/50 placeholder-gray-500 text-gray-200 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                                    placeholder="Phone Number (e.g., 01712345678)"
+                                />
                             </div>
                             <div className="relative">
                                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">HSC -</span>

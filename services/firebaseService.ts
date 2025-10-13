@@ -1,7 +1,7 @@
 import { 
   doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion, arrayRemove, Timestamp, onSnapshot, Unsubscribe
 } from 'firebase/firestore';
-// fix: Added deleteObject for cleaning up storage on post deletion.
+// Added deleteObject for cleaning up storage on post deletion.
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage, auth } from '../config/firebase.js';
 import { UserProfile, Post, Suggestion, PromotionRequest, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement, Notification, Session } from '../types.js';
@@ -35,7 +35,11 @@ export const signInWithGoogle = async (): Promise<{ user: User, isNewUser: boole
     const user = result.user;
 
     const userProfile = await getUserProfile(user.uid);
-    return { user, isNewUser: !userProfile };
+    if (!userProfile) {
+        await createUserProfile(user.uid, user.displayName || 'New User', user.email || '');
+    }
+    const isNewUser = !userProfile || !userProfile.phone || !userProfile.batch;
+    return { user, isNewUser };
 };
 
 export const resendVerificationEmail = async (): Promise<void> => {
@@ -387,7 +391,6 @@ const createNotification = async (userId: string, title: string, body: string, l
     });
 };
 
-// fix: Added all missing functions to resolve export errors.
 export const onAnnouncementsUpdate = (callback: (announcements: Announcement[]) => void): Unsubscribe => {
     const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(10));
     return onSnapshot(q, (querySnapshot) => {

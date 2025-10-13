@@ -3,10 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.js';
 import { getUserProfile, updateUserProfile, getPostsByAuthor, createPromotionRequest, getUsersPendingRequest, recalculateUserStats } from '../services/firebaseService.js';
 import { Province, PROVINCES, UserRole } from '../constants.js';
-import { UserProfile, Post, PromotionRequest } from '../types.js';
+import { UserProfile, Post, PromotionRequest, Badge } from '../types.js';
 import PostCard from '../components/PostCard.js';
 import SkeletonPostCard from '../components/SkeletonPostCard.js';
-import { ALL_BADGES, Badge } from '../badges.js';
+// Fix: The 'Badge' type is not exported from 'badges.js'. It is imported from 'types.js' above.
+import { ALL_BADGES } from '../badges.js';
 import SEO from '../components/SEO.js';
 
 const NEXT_ROLE_MAP: Partial<Record<UserRole, UserRole>> = {
