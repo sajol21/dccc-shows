@@ -102,8 +102,6 @@ const UserProfilePage: React.FC = () => {
         setFormData({
             name: profileData.name,
             phone: profileData.phone,
-            batch: profileData.batch,
-            province: profileData.province,
         });
     }
     setIsEditing(!isEditing);
@@ -148,48 +146,61 @@ const UserProfilePage: React.FC = () => {
   };
 
   if (loading || authLoading) {
+    const skeletonPatternStyle = {
+        backgroundColor: 'rgba(55, 65, 81, 1)', // gray-700
+        backgroundImage: `url('https://res.cloudinary.com/dabfeqgsj/image/upload/c_scale,o_10,w_40/v1759850540/re04d3ncwpwk75wllsfh.png')`,
+        backgroundRepeat: 'repeat',
+    };
     return (
       <div className="space-y-12">
         <div className="max-w-5xl mx-auto bg-gray-800 rounded-lg shadow-xl p-4 md:p-8 animate-pulse">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
-                {/* Left Column Skeleton */}
+                {/* Left Column Skeleton (Top on Mobile) */}
                 <div className="md:col-span-2 space-y-8">
                     <div>
-                        <div className="h-8 bg-gray-700 rounded w-48 mb-2"></div>
-                        <div className="h-5 bg-gray-700 rounded w-64 mb-3"></div>
-                        <div className="h-5 bg-gray-700 rounded w-32 mb-6"></div>
+                        <div className="h-8 rounded w-48 mb-2" style={skeletonPatternStyle}></div>
+                        <div className="h-5 rounded w-64 mb-3" style={skeletonPatternStyle}></div>
+                        <div className="h-5 rounded w-32 mb-6" style={skeletonPatternStyle}></div>
                     </div>
                     <div>
-                        <div className="h-6 bg-gray-700 rounded w-40 mb-4"></div>
-                        <div className="space-y-3">
+                        <div className="h-6 rounded w-40 mb-4" style={skeletonPatternStyle}></div>
+                        <div className="flex flex-wrap gap-4">
                             {Array.from({ length: 4 }).map((_, i) => (
-                                <div key={i} className="flex items-start gap-4">
-                                    <div className="w-12 h-12 rounded-full bg-gray-700 flex-shrink-0"></div>
-                                    <div className="flex-grow">
-                                        <div className="h-4 bg-gray-700 rounded w-3/4 mb-2"></div>
-                                        <div className="h-3 bg-gray-700 rounded w-full"></div>
-                                        <div className="h-3 bg-gray-700 rounded w-1/2 mt-1"></div>
-                                    </div>
-                                </div>
+                                <div key={i} className="w-12 h-12 rounded-full" style={skeletonPatternStyle}></div>
                             ))}
                         </div>
                     </div>
                 </div>
-                {/* Right Column Skeleton */}
+                {/* Right Column Skeleton (Bottom on Mobile) */}
                 <div className="md:col-span-3">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                        <div className="p-4 bg-gray-700 rounded-lg h-20"></div>
-                        <div className="p-4 bg-gray-700 rounded-lg h-20"></div>
-                        <div className="p-4 bg-gray-700 rounded-lg h-20"></div>
+                        <div className="p-4 rounded-lg h-20" style={skeletonPatternStyle}></div>
+                        <div className="p-4 rounded-lg h-20" style={skeletonPatternStyle}></div>
+                        <div className="p-4 rounded-lg h-20" style={skeletonPatternStyle}></div>
                     </div>
-                    <div className="h-10 bg-gray-700 rounded w-full mt-6"></div>
-                    <div className="h-10 bg-gray-700 rounded w-full"></div>
-                    <div className="h-10 bg-gray-700 rounded w-full"></div>
+                    <div className="space-y-4 mt-6">
+                        <div>
+                            <div className="h-4 rounded w-20 mb-2" style={skeletonPatternStyle}></div>
+                            <div className="h-5 rounded w-full" style={skeletonPatternStyle}></div>
+                        </div>
+                        <div>
+                            <div className="h-4 rounded w-20 mb-2" style={skeletonPatternStyle}></div>
+                            <div className="h-5 rounded w-full" style={skeletonPatternStyle}></div>
+                        </div>
+                        <div>
+                            <div className="h-4 rounded w-20 mb-2" style={skeletonPatternStyle}></div>
+                            <div className="h-5 rounded w-full" style={skeletonPatternStyle}></div>
+                        </div>
+                        <div>
+                            <div className="h-4 rounded w-20 mb-2" style={skeletonPatternStyle}></div>
+                            <div className="h-5 rounded w-full" style={skeletonPatternStyle}></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         <section>
-          <div className="h-8 bg-gray-700 rounded w-1/3 mx-auto mb-8 animate-pulse"></div>
+          <div className="h-8 rounded w-1/3 mx-auto mb-8 animate-pulse" style={skeletonPatternStyle}></div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {Array.from({ length: 3 }).map((_, index) => <SkeletonPostCard key={index} />)}
           </div>
@@ -293,7 +304,7 @@ const UserProfilePage: React.FC = () => {
                     </div>
                     <div className="p-4 bg-gray-700 rounded-lg">
                         <p className="text-2xl font-bold text-white">{profileData.totalLikes}</p>
-                        <p className="text-sm text-gray-400">Total Appreciates</p>
+                        <p className="text-sm text-gray-400">Appreciates</p>
                     </div>
                      <div className="p-4 bg-gray-700 rounded-lg">
                         <p className="text-2xl font-bold text-white">{profileData.totalSuggestions}</p>
@@ -306,23 +317,23 @@ const UserProfilePage: React.FC = () => {
                         <label htmlFor="profile-name" className="font-semibold text-gray-300">Full Name:</label>
                         {isEditing ? <input id="profile-name" type="text" name="name" value={formData.name || ''} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/> : <p className="text-gray-300">{profileData.name}</p>}
                     </div>
-                    {isOwner && isEditing && (
+                    {isOwner && (
                         <div>
                             <label htmlFor="profile-phone" className="font-semibold text-gray-300">Phone:</label>
-                            <input id="profile-phone" type="text" name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+                             {isEditing ? (
+                                <input id="profile-phone" type="text" name="phone" value={formData.phone || ''} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/>
+                             ) : (
+                               <p className="text-gray-300">{profileData.phone || 'Not provided'}</p>
+                             )}
                         </div>
                     )}
                     <div>
-                        <label htmlFor="profile-batch" className="font-semibold text-gray-300">Batch:</label>
-                        {isEditing ? <input id="profile-batch" type="text" name="batch" value={formData.batch || ''} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white"/> : <p className="text-gray-300">{profileData.batch || 'Not provided'}</p>}
+                        <label className="font-semibold text-gray-300">Batch:</label>
+                        <p className="text-gray-300">{profileData.batch || 'Not provided'}</p>
                     </div>
                     <div>
-                        <label htmlFor="profile-province" className="font-semibold text-gray-300">Province:</label>
-                        {isEditing ? (
-                            <select id="profile-province" name="province" value={formData.province || Province.CULTURAL} onChange={handleInputChange} className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-white">
-                                {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-                            </select>
-                        ) : <p className="text-gray-300">{profileData.province}</p>}
+                        <label className="font-semibold text-gray-300">Province:</label>
+                        <p className="text-gray-300">{profileData.province}</p>
                     </div>
                     
                     {isOwner && (

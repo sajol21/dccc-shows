@@ -10,20 +10,26 @@ import { Unsubscribe } from 'firebase/firestore';
 
 type LeaderboardView = 'current' | string; // 'current' or an archive ID like '2024-07'
 
-const SkeletonLeaderboardRow: React.FC = () => (
+const SkeletonLeaderboardRow: React.FC = () => {
+    const skeletonPatternStyle = {
+        backgroundColor: 'rgba(55, 65, 81, 1)', // gray-700
+        backgroundImage: `url('https://res.cloudinary.com/dabfeqgsj/image/upload/c_scale,o_10,w_40/v1759850540/re04d3ncwpwk75wllsfh.png')`,
+        backgroundRepeat: 'repeat',
+    };
+    return (
     <div className="p-4 rounded-lg flex items-center gap-4 bg-gray-800/50 animate-pulse border border-gray-700">
         <div className="w-10">
-            <div className="h-6 w-6 bg-gray-700 rounded"></div>
+            <div className="h-6 w-6 rounded" style={skeletonPatternStyle}></div>
         </div>
         <div className="flex-grow">
-            <div className="h-5 bg-gray-700 rounded w-3/5 mb-2"></div>
-            <div className="h-4 bg-gray-700 rounded w-2/5"></div>
+            <div className="h-5 rounded w-3/5 mb-2" style={skeletonPatternStyle}></div>
+            <div className="h-4 rounded w-2/5" style={skeletonPatternStyle}></div>
         </div>
         <div className="text-right">
-            <div className="h-6 bg-gray-700 rounded w-12"></div>
+            <div className="h-6 rounded w-12" style={skeletonPatternStyle}></div>
         </div>
     </div>
-);
+)};
 
 const LeaderboardPage: React.FC = () => {
   const [users, setUsers] = useState<(UserProfile | ArchivedUser)[]>([]);

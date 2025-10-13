@@ -54,23 +54,35 @@ const SessionDetailPage: React.FC = () => {
     }, [id]);
 
     if (loading) {
+        const imagePlaceholderStyle = {
+            backgroundColor: 'rgba(17, 24, 39, 1)', // gray-900
+            backgroundImage: `url('https://res.cloudinary.com/dabfeqgsj/image/upload/v1759850540/re04d3ncwpwk75wllsfh.png')`,
+            backgroundSize: '30rem',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+        };
+        const skeletonPatternStyle = {
+            backgroundColor: 'rgba(55, 65, 81, 1)', // gray-700
+            backgroundImage: `url('https://res.cloudinary.com/dabfeqgsj/image/upload/c_scale,o_10,w_40/v1759850540/re04d3ncwpwk75wllsfh.png')`,
+            backgroundRepeat: 'repeat',
+        };
         return (
             <div className="bg-gray-900/80 backdrop-blur-lg rounded-xl border border-gray-700 shadow-xl overflow-hidden max-w-4xl mx-auto animate-pulse">
-                <div className="aspect-video bg-gray-700"></div>
+                <div className="aspect-video" style={imagePlaceholderStyle}></div>
                 <div className="p-6 md:p-10">
-                    <div className="h-8 bg-gray-700 rounded w-3/4 mb-2"></div>
-                    <div className="h-5 bg-gray-700 rounded w-1/4 mb-8"></div>
+                    <div className="h-8 rounded w-3/4 mb-2" style={skeletonPatternStyle}></div>
+                    <div className="h-5 rounded w-1/4 mb-8" style={skeletonPatternStyle}></div>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-8 p-4 bg-black/20 rounded-lg border border-gray-700">
-                        <div className="h-16 bg-gray-700 rounded"></div>
-                        <div className="h-16 bg-gray-700 rounded"></div>
-                        <div className="h-16 bg-gray-700 rounded"></div>
+                        <div className="h-16 rounded" style={skeletonPatternStyle}></div>
+                        <div className="h-16 rounded" style={skeletonPatternStyle}></div>
+                        <div className="h-16 rounded" style={skeletonPatternStyle}></div>
                     </div>
 
                     <div className="space-y-3">
-                        <div className="h-4 bg-gray-700 rounded w-full"></div>
-                        <div className="h-4 bg-gray-700 rounded w-full"></div>
-                        <div className="h-4 bg-gray-700 rounded w-5/6"></div>
+                        <div className="h-4 rounded w-full" style={skeletonPatternStyle}></div>
+                        <div className="h-4 rounded w-full" style={skeletonPatternStyle}></div>
+                        <div className="h-4 rounded w-5/6" style={skeletonPatternStyle}></div>
                     </div>
                 </div>
             </div>
@@ -112,7 +124,7 @@ const SessionDetailPage: React.FC = () => {
                 structuredData={eventStructuredData}
             />
             <div className="bg-black">
-                <img src={session.bannerUrl} alt={session.title} className="w-full aspect-video object-cover" />
+                <img src={session.bannerUrl} alt={session.title} loading="lazy" className="w-full aspect-video object-cover" />
             </div>
             <div className="p-6 md:p-10 text-gray-200">
                 <header className="mb-6">

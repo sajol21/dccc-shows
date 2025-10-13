@@ -49,8 +49,18 @@ const SignUpPage: React.FC = () => {
   const handleGoogleSignUp = async () => {
     try {
       setLoading(true);
-      await signInWithGoogle();
-      navigate('/profile');
+      const { user, isNewUser } = await signInWithGoogle();
+      if (isNewUser) {
+        navigate('/complete-signup', {
+          state: {
+            name: user.displayName,
+            email: user.email,
+          }
+        });
+      } else {
+        // User already exists, so just log them in.
+        navigate('/profile');
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {

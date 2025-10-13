@@ -21,6 +21,7 @@ import CreatePostPage from './pages/CreatePostPage.js';
 import SessionsPage from './pages/SessionsPage.js';
 import SessionDetailPage from './pages/SessionDetailPage.js';
 import BottomNavBar from './components/BottomNavBar.js';
+import CompleteSignUpPage from './pages/CompleteSignUpPage.js';
 
 const AppContent: React.FC = () => {
   return (
@@ -41,6 +42,12 @@ const AppContent: React.FC = () => {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           
+          <Route path="/complete-signup" element={
+            <ProtectedRoute>
+              <CompleteSignUpPage />
+            </ProtectedRoute>
+          } />
+
           <Route path="/profile" element={
             <ProtectedRoute>
               <ProfileRedirect />

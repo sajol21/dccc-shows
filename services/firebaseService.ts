@@ -6,7 +6,7 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { db, storage, auth } from '../config/firebase.js';
 import { UserProfile, Post, Suggestion, PromotionRequest, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement, Notification, Session } from '../types.js';
 import { UserRole, Province, LEADERBOARD_ROLES } from '../constants.js';
-import { signOut, GoogleAuthProvider, signInWithPopup, sendEmailVerification } from 'firebase/auth';
+import { signOut, GoogleAuthProvider, signInWithPopup, sendEmailVerification, User } from 'firebase/auth';
 
 // User Management
 export const createUserProfile = async (uid: string, name: string, email: string, phone: string = '', batch: string = ''): Promise<void> => {
@@ -29,15 +29,13 @@ export const createUserProfile = async (uid: string, name: string, email: string
   });
 };
 
-export const signInWithGoogle = async (): Promise<void> => {
+export const signInWithGoogle = async (): Promise<{ user: User, isNewUser: boolean }> => {
     const provider = new GoogleAuthProvider();
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
 
     const userProfile = await getUserProfile(user.uid);
-    if (!userProfile) {
-        await createUserProfile(user.uid, user.displayName || 'New User', user.email || '', '', '');
-    }
+    return { user, isNewUser: !userProfile };
 };
 
 export const resendVerificationEmail = async (): Promise<void> => {

@@ -139,7 +139,7 @@ const HomePage: React.FC = () => {
       {siteConfig?.bannerImageUrl && (
         <section>
           <a href={siteConfig.bannerLinkUrl} target="_blank" rel="noopener noreferrer" className="block rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-shadow">
-            <img src={siteConfig.bannerImageUrl} alt="Promotional Banner" className="w-full object-cover"/>
+            <img src={siteConfig.bannerImageUrl} alt="Promotional Banner" loading="lazy" className="w-full object-cover"/>
           </a>
         </section>
       )}

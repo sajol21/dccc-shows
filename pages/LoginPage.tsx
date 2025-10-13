@@ -34,8 +34,17 @@ const LoginPage: React.FC = () => {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      await signInWithGoogle();
-      navigate('/profile');
+      const { user, isNewUser } = await signInWithGoogle();
+      if (isNewUser) {
+        navigate('/complete-signup', {
+          state: {
+            name: user.displayName,
+            email: user.email,
+          }
+        });
+      } else {
+        navigate('/profile');
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {

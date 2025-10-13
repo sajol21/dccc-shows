@@ -11,7 +11,8 @@ const SessionCard: React.FC<{ session: Session }> = ({ session }) => {
                 <div className="relative overflow-hidden aspect-video bg-black">
                     <img 
                         src={session.bannerUrl} 
-                        alt={session.title} 
+                        alt={session.title}
+                        loading="lazy"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     <div className="absolute top-3 right-3 bg-black/50 p-1.5 px-3 rounded-full backdrop-blur-sm z-10 text-xs text-white">

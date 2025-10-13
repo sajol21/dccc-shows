@@ -90,7 +90,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
             <TypeIcon type={post.type} />
             {(post.type === 'Image' && post.mediaURL) && (
                 <div className="overflow-hidden aspect-video bg-black">
-                    <img src={post.mediaURL} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
+                    <img src={post.mediaURL} alt={post.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
                 </div>
             )}
             {(post.type === 'Video') && (
@@ -100,7 +100,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="currentColor" viewBox="0 0 24 24"><path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/></svg>
                         </div>
                     ) : videoThumbnailUrl ? (
-                        <img src={videoThumbnailUrl} alt={`${post.title} thumbnail`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <img src={videoThumbnailUrl} alt={`${post.title} thumbnail`} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     ) : (
                         <div className="w-full h-full bg-black flex items-center justify-center text-gray-500">No thumbnail</div>
                     )}

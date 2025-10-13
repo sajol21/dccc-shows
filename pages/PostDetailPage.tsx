@@ -159,25 +159,37 @@ const PostDetailPage: React.FC = () => {
 
 
     if (loading) {
+        const imagePlaceholderStyle = {
+            backgroundColor: 'rgba(17, 24, 39, 1)', // gray-900
+            backgroundImage: `url('https://res.cloudinary.com/dabfeqgsj/image/upload/v1759850540/re04d3ncwpwk75wllsfh.png')`,
+            backgroundSize: '30rem',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+        };
+        const skeletonPatternStyle = {
+            backgroundColor: 'rgba(55, 65, 81, 1)', // gray-700
+            backgroundImage: `url('https://res.cloudinary.com/dabfeqgsj/image/upload/c_scale,o_10,w_40/v1759850540/re04d3ncwpwk75wllsfh.png')`,
+            backgroundRepeat: 'repeat',
+        };
         return (
             <div className="bg-gray-900/80 backdrop-blur-lg rounded-xl border border-gray-700 shadow-xl overflow-hidden animate-pulse">
-                <div className="aspect-video bg-gray-700"></div>
+                <div className="aspect-video" style={imagePlaceholderStyle}></div>
                 <div className="p-6 md:p-10">
-                    <div className="h-8 bg-gray-700 rounded w-3/4 mb-4"></div>
+                    <div className="h-8 rounded w-3/4 mb-4" style={skeletonPatternStyle}></div>
                     <div className="flex items-center gap-2 mb-2">
-                         <div className="h-5 bg-gray-700 rounded w-1/4"></div>
-                         <div className="h-4 bg-gray-700 rounded w-1/5"></div>
+                         <div className="h-5 rounded w-1/4" style={skeletonPatternStyle}></div>
+                         <div className="h-4 rounded w-1/5" style={skeletonPatternStyle}></div>
                     </div>
-                    <div className="h-4 bg-gray-700 rounded w-1/3 mb-6"></div>
+                    <div className="h-4 rounded w-1/3 mb-6" style={skeletonPatternStyle}></div>
                     
                     <div className="py-4 border-t border-b border-gray-700 flex gap-6">
-                        <div className="h-6 bg-gray-700 rounded w-24"></div>
-                        <div className="h-6 bg-gray-700 rounded w-28"></div>
+                        <div className="h-6 rounded w-24" style={skeletonPatternStyle}></div>
+                        <div className="h-6 rounded w-28" style={skeletonPatternStyle}></div>
                     </div>
                     
                     <div className="mt-6 pt-6 border-t border-gray-700">
-                        <div className="h-6 bg-gray-700 rounded w-1/2 mb-4"></div>
-                        <div className="h-20 bg-gray-700 rounded w-full"></div>
+                        <div className="h-6 rounded w-1/2 mb-4" style={skeletonPatternStyle}></div>
+                        <div className="h-20 rounded w-full" style={skeletonPatternStyle}></div>
                     </div>
                 </div>
             </div>
@@ -232,7 +244,8 @@ const PostDetailPage: React.FC = () => {
                 <div className="bg-black">
                     <img 
                         src={post.mediaURL} 
-                        alt={post.title} 
+                        alt={post.title}
+                        loading="lazy"
                         className="w-full aspect-square object-contain mx-auto cursor-pointer"
                         onClick={() => setLightboxMedia({ type: 'Image', url: post.mediaURL || '' })}
                     />
