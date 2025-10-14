@@ -5,6 +5,26 @@ import { useAuth } from '../contexts/AuthContext.js';
 import { toggleLikePost } from '../services/firebaseService.js';
 import RoleBadge from './RoleBadge.js';
 
+// Helper to transform a Google Drive shareable link into a direct image link
+const transformGoogleDriveUrl = (url: string | undefined): string | undefined => {
+    if (!url || !url.includes('drive.google.com')) {
+        return url;
+    }
+
+    // More robust regex to find the file ID from various Drive URL formats.
+    const match = url.match(/drive\.google\.com.*?(?:d\/|id=)([a-zA-Z0-9_-]{25,})/);
+
+    if (match && match[1]) {
+        const fileId = match[1];
+        // Construct the direct image link that can be used in <img> tags.
+        return `https://drive.google.com/uc?export=view&id=${fileId}`;
+    }
+
+    // Fallback to the original URL if no ID is found.
+    return url;
+};
+
+
 // Helper function to extract a video thumbnail URL
 const getVideoThumbnail = (url: string | undefined): string | null => {
     if (!url) return null;
@@ -90,7 +110,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
             <TypeIcon type={post.type} />
             {(post.type === 'Image' && post.mediaURL) && (
                 <div className="overflow-hidden aspect-video bg-black">
-                    <img src={post.mediaURL} alt={post.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
+                    <img src={transformGoogleDriveUrl(post.mediaURL)} alt={post.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
                 </div>
             )}
             {(post.type === 'Video') && (

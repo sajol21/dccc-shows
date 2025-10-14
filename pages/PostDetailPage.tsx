@@ -10,6 +10,26 @@ import { db } from '../config/firebase.js';
 import { doc, onSnapshot, Timestamp } from 'firebase/firestore';
 import SEO from '../components/SEO.js';
 
+// Helper to transform a Google Drive shareable link into a direct image link
+const transformGoogleDriveUrl = (url: string | undefined): string | undefined => {
+    if (!url || !url.includes('drive.google.com')) {
+        return url;
+    }
+
+    // More robust regex to find the file ID from various Drive URL formats.
+    const match = url.match(/drive\.google\.com.*?(?:d\/|id=)([a-zA-Z0-9_-]{25,})/);
+
+    if (match && match[1]) {
+        const fileId = match[1];
+        // Construct the direct image link that can be used in <img> tags.
+        return `https://drive.google.com/uc?export=view&id=${fileId}`;
+    }
+
+    // Fallback to the original URL if no ID is found.
+    return url;
+};
+
+
 const getEmbedUrl = (url: string | undefined, autoplay: boolean = false): string => {
     if (!url) return '';
     try {
@@ -206,7 +226,8 @@ const PostDetailPage: React.FC = () => {
     
     const suggestions = post.suggestions?.sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime()) || [];
 
-    const imageUrl = post.type === 'Image' ? post.mediaURL : post.type === 'Video' ? getVideoThumbnail(post.mediaURL) || undefined : undefined;
+    const transformedMediaUrl = post.type === 'Image' ? transformGoogleDriveUrl(post.mediaURL) : post.mediaURL;
+    const imageUrl = post.type === 'Image' ? transformedMediaUrl : post.type === 'Video' ? getVideoThumbnail(post.mediaURL) || undefined : undefined;
     const metaDescription = post.description.length > 160 ? post.description.substring(0, 157) + '...' : post.description;
 
     const articleStructuredData = {
@@ -243,11 +264,11 @@ const PostDetailPage: React.FC = () => {
             {post.mediaURL && post.type === 'Image' && 
                 <div className="bg-black">
                     <img 
-                        src={post.mediaURL} 
+                        src={transformedMediaUrl} 
                         alt={post.title}
                         loading="lazy"
                         className="w-full aspect-square object-contain mx-auto cursor-pointer"
-                        onClick={() => setLightboxMedia({ type: 'Image', url: post.mediaURL || '' })}
+                        onClick={() => setLightboxMedia({ type: 'Image', url: transformedMediaUrl || '' })}
                     />
                 </div>
             }
