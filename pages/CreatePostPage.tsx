@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { createPost } from '../services/firebaseService.js';
+import { createPost, uploadImage } from '../services/firebaseService.js';
 import { Province, PROVINCES } from '../constants.js';
 import { useAuth } from '../contexts/AuthContext.js';
-import Spinner from '../components/Spinner.js';
 
 const CreatePostPage: React.FC = () => {
     const { userProfile } = useAuth();
@@ -18,9 +17,28 @@ const CreatePostPage: React.FC = () => {
     const [province, setProvince] = useState<Province>(Province.CULTURAL);
     const [type, setType] = useState<'Text' | 'Image' | 'Video'>('Text');
     const [mediaUrl, setMediaUrl] = useState('');
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [uploadProgress, setUploadProgress] = useState<number | null>(null);
     
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(false);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            // Basic validation
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                setError('File size should be less than 5MB.');
+                return;
+            }
+            if (!file.type.startsWith('image/')) {
+                setError('Please select an image file.');
+                return;
+            }
+            setImageFile(file);
+            setError('');
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -44,14 +62,26 @@ const CreatePostPage: React.FC = () => {
 
         setSubmitting(true);
         setError('');
+        setUploadProgress(null);
 
         try {
+            let finalMediaUrl = '';
+            if (type === 'Text' && imageFile) {
+                setUploadProgress(0); // Show progress bar
+                const uploadResult = await uploadImage(imageFile, (progress) => {
+                    setUploadProgress(progress);
+                });
+                finalMediaUrl = uploadResult.url;
+            } else if (type === 'Image' || type === 'Video') {
+                finalMediaUrl = mediaUrl;
+            }
+
             await createPost({
                 title,
                 description: type === 'Text' ? description : title,
                 province,
                 type,
-                mediaURL: type === 'Text' ? '' : mediaUrl,
+                mediaURL: finalMediaUrl,
                 authorId: userProfile.uid,
                 authorName: userProfile.name,
                 authorBatch: userProfile.batch,
@@ -60,11 +90,29 @@ const CreatePostPage: React.FC = () => {
             });
             alert("Show submitted for approval! The curators are on it.");
             navigate('/shows');
-        } catch (err) {
-            console.error(err);
-            setError('Failed to create show. Please check your connection and try again.');
+        } catch (err: any) {
+            console.error("Submission Error:", err);
+            let errorMessage = 'An unexpected error occurred. Please try again.';
+
+            // Check for specific ImageKit "Missing Token" error
+            if (err && typeof err.message === 'string' && err.message.includes("Missing token for upload")) {
+                errorMessage = "ImageKit Security Error: Your account requires a security token. To fix this, please go to your ImageKit Dashboard -> Settings -> Upload, and ensure 'Allow unsigned image uploading' is turned ON. Then, save your changes and try again.";
+            } 
+            // Check for specific Firebase errors
+            else if (err.code === 'permission-denied') {
+                errorMessage = "Submission failed: You do not have permission to create posts. Please contact an administrator.";
+            } 
+            // Fallback to more generic error messages
+            else if (typeof err === 'string') {
+                errorMessage = err;
+            } else if (err && typeof err.message === 'string') {
+                errorMessage = err.message;
+            }
+            
+            setError(errorMessage);
         } finally {
             setSubmitting(false);
+            setUploadProgress(null); // Hide progress bar
         }
     };
     
@@ -89,10 +137,17 @@ const CreatePostPage: React.FC = () => {
                 </div>
 
                 {type === 'Text' && (
-                  <div>
-                    <label htmlFor="post-description" className="block text-sm font-medium text-gray-300 mb-1">Description</label>
-                    <textarea id="post-description" placeholder="Tell us the story..." value={description} onChange={e => setDescription(e.target.value)} rows={5} className="w-full p-3 border rounded-md bg-gray-800 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500"/>
-                  </div>
+                  <>
+                    <div>
+                      <label htmlFor="post-description" className="block text-sm font-medium text-gray-300 mb-1">Description</label>
+                      <textarea id="post-description" placeholder="Tell us the story..." value={description} onChange={e => setDescription(e.target.value)} rows={5} className="w-full p-3 border rounded-md bg-gray-800 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500"/>
+                    </div>
+                     <div>
+                        <label htmlFor="post-image-upload" className="block text-sm font-medium text-gray-300 mb-1">Upload an Image (Optional)</label>
+                        <input id="post-image-upload" type="file" accept="image/*" onChange={handleFileChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500/20 file:text-blue-300 hover:file:bg-blue-500/30"/>
+                        {imageFile && <p className="text-xs text-gray-500 mt-1">Selected: {imageFile.name}</p>}
+                    </div>
+                  </>
                 )}
                 
                 {(type === 'Image' || type === 'Video') && 
@@ -109,8 +164,21 @@ const CreatePostPage: React.FC = () => {
                     </select>
                 </div>
 
+                {uploadProgress !== null && (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Uploading Image</label>
+                        <div className="w-full bg-gray-700 rounded-full h-2.5">
+                            <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
+                        </div>
+                        <p className="text-center text-sm text-gray-400 mt-1">{uploadProgress}%</p>
+                    </div>
+                )}
+
+
                 <button type="submit" disabled={submitting} className="w-full flex justify-center py-3 px-4 text-base font-semibold rounded-lg text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-md transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed">
-                    {submitting ? <Spinner /> : 'Submit for Review'}
+                    {submitting ? (
+                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+                    ) : 'Submit for Review'}
                 </button>
             </form>
         </div>

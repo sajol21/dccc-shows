@@ -8,6 +8,83 @@ import { UserProfile, Post, Suggestion, PromotionRequest, LeaderboardArchive, Ar
 import { UserRole, Province, LEADERBOARD_ROLES } from '../constants.js';
 import { signOut, GoogleAuthProvider, signInWithPopup, sendEmailVerification, User } from 'firebase/auth';
 
+declare var ImageKit: any;
+
+// --- ImageKit Configuration ---
+// =================================================================================================
+// These credentials have been configured based on your input. If you encounter
+// upload issues, please double-check these values in your ImageKit.io dashboard.
+// 1. Go to https://imagekit.io/
+// 2. Find your "URL-endpoint" on the dashboard.
+// 3. Go to Developer -> API Keys and find your "Public key".
+// =================================================================================================
+const IMAGEKIT_PUBLIC_KEY = "public_ep/CKsKqDroGSubHYP8VD7xqvnE=";
+const IMAGEKIT_URL_ENDPOINT = "https://ik.imagekit.io/dccc/";
+
+
+let imagekitInstance: any;
+
+const getImageKit = () => {
+    if (typeof ImageKit === 'undefined') {
+        console.error("ImageKit SDK not loaded. Make sure the script is included in your index.html.");
+        return null;
+    }
+    if (!imagekitInstance) {
+        if (!IMAGEKIT_PUBLIC_KEY || IMAGEKIT_PUBLIC_KEY.includes('REPLACE') || IMAGEKIT_PUBLIC_KEY.includes('sample')) {
+            console.error("ImageKit public key is not configured. Please replace the example key in services/firebaseService.ts");
+            return null;
+        }
+        if (!IMAGEKIT_URL_ENDPOINT || IMAGEKIT_URL_ENDPOINT.includes('REPLACE') || IMAGEKIT_URL_ENDPOINT.includes('sample')) {
+            console.error("ImageKit URL endpoint is not configured. Please replace the example endpoint in services/firebaseService.ts");
+            return null;
+        }
+        imagekitInstance = new ImageKit({
+            publicKey: IMAGEKIT_PUBLIC_KEY,
+            urlEndpoint: IMAGEKIT_URL_ENDPOINT,
+        });
+    }
+    return imagekitInstance;
+}
+
+/**
+ * Uploads an image file to ImageKit using client-side unsigned upload.
+ * 
+ * SECURITY NOTE: This is an "unsigned" upload. For it to work, you must:
+ * 1. Go to your ImageKit Dashboard -> Settings -> Upload.
+ * 2. Ensure "Allow unsigned image uploading" is ENABLED.
+ * 3. For better security, consider adding restrictions in your dashboard, such as:
+ *    - Restricting uploads to specific file types (e.g., JPG, PNG, WEBP).
+ *    - Limiting file size.
+ *    - Restricting uploads to come from your website's domain (Origin).
+ * 
+ * For maximum security, use "signed" uploads, which require a backend server 
+ * (like a Firebase Cloud Function) to generate a signature.
+ * 
+ * @param file The image file to upload.
+ * @param onProgress A callback function to track upload progress (0-100).
+ * @returns A promise that resolves with the upload result, including the file URL.
+ */
+export const uploadImage = (file: File, onProgress: (progress: number) => void): Promise<{ url: string }> => {
+    const imagekit = getImageKit();
+    if (!imagekit) {
+        return Promise.reject("ImageKit is not configured. Please check credentials in services/firebaseService.ts");
+    }
+    return imagekit.upload({
+        file: file,
+        fileName: file.name,
+        useUniqueFileName: true,
+        tags: ["dccc-post"],
+        onUploadProgress: (evt) => {
+            // Some browsers might not provide total size, so we check lengthComputable.
+            if (evt.lengthComputable) {
+                const progress = Math.round((evt.loaded / evt.total) * 100);
+                onProgress(progress);
+            }
+        },
+    });
+};
+
+
 // User Management
 export const createUserProfile = async (uid: string, name: string, email: string, phone: string = '', batch: string = ''): Promise<void> => {
   const userRef = doc(db, 'users', uid);
