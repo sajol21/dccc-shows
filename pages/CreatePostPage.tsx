@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { createPost, uploadImage } from '../services/firebaseService.js';
 import { Province, PROVINCES } from '../constants.js';
 import { useAuth } from '../contexts/AuthContext.js';
+import Spinner from '../components/Spinner.js';
 
 const CreatePostPage: React.FC = () => {
     const { userProfile } = useAuth();
@@ -18,7 +19,6 @@ const CreatePostPage: React.FC = () => {
     const [type, setType] = useState<'Text' | 'Image' | 'Video'>('Text');
     const [mediaUrl, setMediaUrl] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
-    const [uploadProgress, setUploadProgress] = useState<number | null>(null);
     
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(false);
@@ -51,8 +51,8 @@ const CreatePostPage: React.FC = () => {
             setError('A title is required for all shows.');
             return;
         }
-        if (type === 'Text' && !description.trim()) {
-            setError('A description is required for a text-based show.');
+        if (type === 'Text' && !description.trim() && !imageFile) {
+            setError('A description or an image is required for a text-based show.');
             return;
         }
         if ((type === 'Image' || type === 'Video') && !mediaUrl.trim()) {
@@ -62,15 +62,11 @@ const CreatePostPage: React.FC = () => {
 
         setSubmitting(true);
         setError('');
-        setUploadProgress(null);
 
         try {
             let finalMediaUrl = '';
             if (type === 'Text' && imageFile) {
-                setUploadProgress(0); // Show progress bar
-                const uploadResult = await uploadImage(imageFile, (progress) => {
-                    setUploadProgress(progress);
-                });
+                const uploadResult = await uploadImage(imageFile);
                 finalMediaUrl = uploadResult.url;
             } else if (type === 'Image' || type === 'Video') {
                 finalMediaUrl = mediaUrl;
@@ -91,28 +87,22 @@ const CreatePostPage: React.FC = () => {
             alert("Show submitted for approval! The curators are on it.");
             navigate('/shows');
         } catch (err: any) {
-            console.error("Submission Error:", err);
-            let errorMessage = 'An unexpected error occurred. Please try again.';
-
-            // Check for specific ImageKit "Missing Token" error
-            if (err && typeof err.message === 'string' && err.message.includes("Missing token for upload")) {
-                errorMessage = "ImageKit Security Error: Your account requires a security token. To fix this, please go to your ImageKit Dashboard -> Settings -> Upload, and ensure 'Allow unsigned image uploading' is turned ON. Then, save your changes and try again.";
-            } 
-            // Check for specific Firebase errors
-            else if (err.code === 'permission-denied') {
-                errorMessage = "Submission failed: You do not have permission to create posts. Please contact an administrator.";
-            } 
-            // Fallback to more generic error messages
-            else if (typeof err === 'string') {
-                errorMessage = err;
-            } else if (err && typeof err.message === 'string') {
-                errorMessage = err.message;
+            console.error(err);
+            // Safely extract error message and handle specific ImageKit error
+            let errorMessage = 'Failed to create show. Please check your connection and try again.';
+            if (err && typeof err.message === 'string') {
+                if (err.message.includes('Missing token for upload')) {
+                    errorMessage = "ImageKit Security Error: Your account requires a security token. To fix this, please go to your ImageKit Dashboard -> Settings -> Upload, and ensure 'Allow unsigned image uploading' is turned ON. Then, save your changes and try again.";
+                } else {
+                    errorMessage = err.message;
+                }
+            } else if (err.code === 'permission-denied') {
+                errorMessage = "Submission failed: Your account does not have permission to create posts. Please contact an administrator.";
             }
-            
+
             setError(errorMessage);
         } finally {
             setSubmitting(false);
-            setUploadProgress(null); // Hide progress bar
         }
     };
     
@@ -164,21 +154,8 @@ const CreatePostPage: React.FC = () => {
                     </select>
                 </div>
 
-                {uploadProgress !== null && (
-                    <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Uploading Image</label>
-                        <div className="w-full bg-gray-700 rounded-full h-2.5">
-                            <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
-                        </div>
-                        <p className="text-center text-sm text-gray-400 mt-1">{uploadProgress}%</p>
-                    </div>
-                )}
-
-
                 <button type="submit" disabled={submitting} className="w-full flex justify-center py-3 px-4 text-base font-semibold rounded-lg text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-md transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed">
-                    {submitting ? (
-                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
-                    ) : 'Submit for Review'}
+                    {submitting ? <Spinner /> : 'Submit for Review'}
                 </button>
             </form>
         </div>
