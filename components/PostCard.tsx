@@ -108,10 +108,10 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
     return (
         <Link to={`/post/${post.id}`} className="group relative block bg-black/20 backdrop-blur-lg rounded-xl border border-white/10 shadow-lg hover:shadow-xl hover:shadow-blue-500/10 hover:border-blue-400 transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
             <TypeIcon type={post.type} />
-            {((post.type === 'Image' && post.mediaURL) || (post.type === 'Text' && post.mediaURL)) && (
+            {(post.type === 'Image' && post.mediaURL) && (
                 <div className="overflow-hidden aspect-video bg-black">
                     <img 
-                        src={post.type === 'Image' ? transformGoogleDriveUrl(post.mediaURL) : post.mediaURL} 
+                        src={transformGoogleDriveUrl(post.mediaURL)} 
                         alt={post.title} 
                         loading="lazy" 
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -138,7 +138,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
                     </div>
                 </div>
             )}
-             {(post.type === 'Text' && !post.mediaURL) && (
+             {(post.type === 'Text') && (
                 <div className="aspect-video bg-gray-800 flex flex-col p-4 overflow-hidden">
                     <div 
                         className="overflow-hidden transition-all duration-500 ease-in-out"

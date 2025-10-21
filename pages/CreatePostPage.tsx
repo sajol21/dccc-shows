@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { createPost, uploadImage } from '../services/firebaseService.js';
+import { createPost } from '../services/firebaseService.js';
 import { Province, PROVINCES } from '../constants.js';
 import { useAuth } from '../contexts/AuthContext.js';
 import Spinner from '../components/Spinner.js';
@@ -18,27 +18,9 @@ const CreatePostPage: React.FC = () => {
     const [province, setProvince] = useState<Province>(Province.CULTURAL);
     const [type, setType] = useState<'Text' | 'Image' | 'Video'>('Text');
     const [mediaUrl, setMediaUrl] = useState('');
-    const [imageFile, setImageFile] = useState<File | null>(null);
     
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(false);
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            // Basic validation
-            if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                setError('File size should be less than 5MB.');
-                return;
-            }
-            if (!file.type.startsWith('image/')) {
-                setError('Please select an image file.');
-                return;
-            }
-            setImageFile(file);
-            setError('');
-        }
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -51,8 +33,8 @@ const CreatePostPage: React.FC = () => {
             setError('A title is required for all shows.');
             return;
         }
-        if (type === 'Text' && !description.trim() && !imageFile) {
-            setError('A description or an image is required for a text-based show.');
+        if (type === 'Text' && !description.trim()) {
+            setError('A description is required for a text-based show.');
             return;
         }
         if ((type === 'Image' || type === 'Video') && !mediaUrl.trim()) {
@@ -65,10 +47,7 @@ const CreatePostPage: React.FC = () => {
 
         try {
             let finalMediaUrl = '';
-            if (type === 'Text' && imageFile) {
-                const uploadResult = await uploadImage(imageFile);
-                finalMediaUrl = uploadResult.url;
-            } else if (type === 'Image' || type === 'Video') {
+            if (type === 'Image' || type === 'Video') {
                 finalMediaUrl = mediaUrl;
             }
 
@@ -88,18 +67,12 @@ const CreatePostPage: React.FC = () => {
             navigate('/shows');
         } catch (err: any) {
             console.error(err);
-            // Safely extract error message and handle specific ImageKit error
             let errorMessage = 'Failed to create show. Please check your connection and try again.';
-            if (err && typeof err.message === 'string') {
-                if (err.message.includes('Missing token for upload')) {
-                    errorMessage = "ImageKit Security Error: Your account requires a security token. To fix this, please go to your ImageKit Dashboard -> Settings -> Upload, and ensure 'Allow unsigned image uploading' is turned ON. Then, save your changes and try again.";
-                } else {
-                    errorMessage = err.message;
-                }
-            } else if (err.code === 'permission-denied') {
+            if (err.code === 'permission-denied') {
                 errorMessage = "Submission failed: Your account does not have permission to create posts. Please contact an administrator.";
+            } else if (err.message) {
+                errorMessage = err.message;
             }
-
             setError(errorMessage);
         } finally {
             setSubmitting(false);
@@ -131,11 +104,6 @@ const CreatePostPage: React.FC = () => {
                     <div>
                       <label htmlFor="post-description" className="block text-sm font-medium text-gray-300 mb-1">Description</label>
                       <textarea id="post-description" placeholder="Tell us the story..." value={description} onChange={e => setDescription(e.target.value)} rows={5} className="w-full p-3 border rounded-md bg-gray-800 border-gray-600 text-white focus:ring-blue-500 focus:border-blue-500"/>
-                    </div>
-                     <div>
-                        <label htmlFor="post-image-upload" className="block text-sm font-medium text-gray-300 mb-1">Upload an Image (Optional)</label>
-                        <input id="post-image-upload" type="file" accept="image/*" onChange={handleFileChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500/20 file:text-blue-300 hover:file:bg-blue-500/30"/>
-                        {imageFile && <p className="text-xs text-gray-500 mt-1">Selected: {imageFile.name}</p>}
                     </div>
                   </>
                 )}

@@ -227,7 +227,7 @@ const PostDetailPage: React.FC = () => {
     const suggestions = post.suggestions?.sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime()) || [];
 
     const transformedMediaUrl = post.type === 'Image' ? transformGoogleDriveUrl(post.mediaURL) : post.mediaURL;
-    const imageUrl = post.type === 'Image' ? transformedMediaUrl : post.type === 'Video' ? getVideoThumbnail(post.mediaURL) || undefined : post.mediaURL; // For text post with image
+    const imageUrl = post.type === 'Image' ? transformedMediaUrl : post.type === 'Video' ? getVideoThumbnail(post.mediaURL) || undefined : undefined;
     const metaDescription = post.description.length > 160 ? post.description.substring(0, 157) + '...' : post.description;
 
     const articleStructuredData = {
@@ -283,17 +283,6 @@ const PostDetailPage: React.FC = () => {
                     </div>
                 </div>
             )}
-             {post.mediaURL && post.type === 'Text' && 
-                <div className="bg-black">
-                    <img 
-                        src={post.mediaURL}
-                        alt={post.title}
-                        loading="lazy"
-                        className="w-full aspect-square object-contain mx-auto cursor-pointer"
-                        onClick={() => setLightboxMedia({ type: 'Image', url: post.mediaURL || '' })}
-                    />
-                </div>
-            }
             
             <div className="p-6 md:p-10 text-gray-200">
                 <header className="mb-6 flex flex-col sm:flex-row justify-between items-start gap-4">

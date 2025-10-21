@@ -2,61 +2,11 @@ import {
   doc, getDoc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, deleteDoc, writeBatch, orderBy, limit, startAfter, DocumentSnapshot, increment, arrayUnion, arrayRemove, Timestamp, onSnapshot, Unsubscribe
 } from 'firebase/firestore';
 // Added deleteObject for cleaning up storage on post deletion.
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage, auth } from '../config/firebase.js';
 import { UserProfile, Post, Suggestion, PromotionRequest, LeaderboardArchive, ArchivedUser, SiteConfig, Announcement, Notification, Session } from '../types.js';
 import { UserRole, Province, LEADERBOARD_ROLES } from '../constants.js';
 import { signOut, GoogleAuthProvider, signInWithPopup, sendEmailVerification, User } from 'firebase/auth';
-
-declare var ImageKit: any;
-
-// --- ImageKit Configuration ---
-const IMAGEKIT_PUBLIC_KEY = "public_ep/CKsKqDroGSubHYP8VD7xqvnE="; 
-const IMAGEKIT_URL_ENDPOINT = "https://ik.imagekit.io/dccc"; 
-
-let imagekitInstance: any;
-
-const getImageKit = () => {
-    if (typeof ImageKit === 'undefined') {
-        console.error("ImageKit SDK not loaded. Make sure the script is included in your index.html.");
-        return null;
-    }
-    if (!imagekitInstance) {
-        if (!IMAGEKIT_PUBLIC_KEY || IMAGEKIT_PUBLIC_KEY.includes('REPLACE')) {
-            console.error("ImageKit public key is not configured. Please replace the placeholder in services/firebaseService.ts");
-            return null;
-        }
-        if (!IMAGEKIT_URL_ENDPOINT || IMAGEKIT_URL_ENDPOINT.includes('REPLACE')) {
-            console.error("ImageKit URL endpoint is not configured. Please replace the placeholder in services/firebaseService.ts");
-            return null;
-        }
-        imagekitInstance = new ImageKit({
-            publicKey: IMAGEKIT_PUBLIC_KEY,
-            urlEndpoint: IMAGEKIT_URL_ENDPOINT,
-        });
-    }
-    return imagekitInstance;
-}
-
-/**
- * Uploads an image file to ImageKit using client-side unsigned upload.
- * Make sure your ImageKit account has unsigned uploads enabled.
- * @param file The image file to upload.
- * @returns A promise that resolves with the upload result, including the file URL.
- */
-export const uploadImage = (file: File): Promise<{ url: string }> => {
-    const imagekit = getImageKit();
-    if (!imagekit) {
-        return Promise.reject("ImageKit is not configured. Please check credentials in services/firebaseService.ts");
-    }
-    return imagekit.upload({
-        file: file,
-        fileName: file.name,
-        useUniqueFileName: true,
-        tags: ["dccc-post"],
-    });
-};
-
 
 // User Management
 export const createUserProfile = async (uid: string, name: string, email: string, phone: string = '', batch: string = ''): Promise<void> => {
